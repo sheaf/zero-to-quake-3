@@ -11,11 +11,11 @@ layout(location = 0) in vec3 position;
 
 layout(location = 1) in vec3 color;
 
-layout(binding = 0) uniform UniformBufferObject {
+layout(push_constant) uniform Object {
     mat4 mvp;
-} ubo;
+} obj;
 
 void main() {
-    gl_Position = ubo.mvp * vec4(position.xyz, 1);
+    gl_Position = obj.mvp * vec4(position.xyz, 1);
     fragColor = color;
 }

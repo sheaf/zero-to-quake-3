@@ -16,6 +16,7 @@ import Control.Exception ( bracket )
 import Control.Monad ( (>=>), forever, guard, unless )
 import Control.Monad.IO.Class ( MonadIO, liftIO )
 import Data.Bits
+import Data.Coerce(coerce)
 import Data.List hiding ( transpose )
 import Data.Ord ( Down(..) )
 import Data.Traversable ( for )
@@ -133,8 +134,10 @@ main = runManaged $ do
   descriptorSet <-
     allocateDescriptorSet device descriptorPool descriptorSetLayout
 
+  let pushConstantsSize = fromIntegral ( 16 * Foreign.sizeOf ( undefined :: Foreign.C.CFloat ) )
+
   ( graphicsPipeline, pipelineLayout ) <-
-    createGraphicsPipeline device renderPass extent descriptorSetLayout
+    createGraphicsPipeline device renderPass extent pushConstantsSize
 
   let
     vertices =
@@ -146,25 +149,25 @@ main = runManaged $ do
   vertexBuffer <-
     createVertexBuffer physicalDevice device vertices
 
-  uniformBuffer <-
-    let
-      view =
-        identity
+  let
+    view =
+      identity
 
-      model =
-        identity
+    model =
+      identity
 
-      projection =
-        perspective ( pi / 2 ) ( 4 / 3 ) 0.1 100
+    projection =
+      perspective ( pi / 2 ) ( 4 / 3 ) 0.1 100
 
-      modelViewProjection :: M44 Foreign.C.CFloat
-      modelViewProjection =
-        transpose ( projection !*! view !*! model )
+    modelViewProjection :: M44 Foreign.C.CFloat
+    modelViewProjection =
+      transpose ( projection !*! view !*! model )
 
-    in
-    createUniformBuffer physicalDevice device modelViewProjection
+    m44toList :: M44 a -> [a]
+    m44toList = foldr (++) [] . fmap (foldr (:) [])
 
-  updateDescriptorSet device descriptorSet uniformBuffer
+  mvpArray <- liftIO ( Foreign.Marshal.newArray ( m44toList modelViewProjection ) )
+
 
   commandBuffers <-
     for framebuffers $ \framebuffer -> do
@@ -186,16 +189,14 @@ main = runManaged $ do
           Vulkan.VK_PIPELINE_BIND_POINT_GRAPHICS
           graphicsPipeline
 
-        Foreign.Marshal.withArray [ descriptorSet ] $ \descriptorSetsPtr ->
-          Vulkan.vkCmdBindDescriptorSets
-            commandBuffer
-            Vulkan.VK_PIPELINE_BIND_POINT_GRAPHICS
-            pipelineLayout
-            0
-            1
-            descriptorSetsPtr
-            0
-            Vulkan.vkNullPtr
+
+        Vulkan.vkCmdPushConstants
+          commandBuffer
+          pipelineLayout
+          Vulkan.VK_SHADER_STAGE_ALL
+          0
+          pushConstantsSize
+          (coerce mvpArray)
 
         Vulkan.vkCmdDraw
           commandBuffer
@@ -237,9 +238,9 @@ enableSDLLogging =
   SDL.Raw.logSetAllPriority SDL.Raw.SDL_LOG_PRIORITY_VERBOSE
 
 
-initializeSDL :: MonadIO m => m ()
-initializeSDL =
-  SDL.initialize [ SDL.InitVideo ]
+  initializeSDL :: MonadIO m => m ()
+  initializeSDL =
+    SDL.initialize [ SDL.InitVideo ]
 
 
 createWindow :: MonadManaged m => m SDL.Window
@@ -979,19 +980,27 @@ createGraphicsPipeline
   => Vulkan.VkDevice
   -> Vulkan.VkRenderPass
   -> Vulkan.VkExtent2D
-  -> Vulkan.VkDescriptorSetLayout
+  -> Vulkan.Word32
   -> m ( Vulkan.VkPipeline, Vulkan.VkPipelineLayout )
-createGraphicsPipeline device renderPass extent layout0 = do
+createGraphicsPipeline device renderPass extent pushConstantsSize = do
   pipelineLayout <-
     let
+      pushConstantRange =
+        Vulkan.createVk
+          (  Vulkan.set @"stageFlags" Vulkan.VK_SHADER_STAGE_ALL
+          &* Vulkan.set @"offset" 0
+          &* Vulkan.set @"size" pushConstantsSize
+          )
+
       pipelineLayoutCreateInfo =
         Vulkan.createVk
           (  Vulkan.set @"sType" Vulkan.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO
           &* Vulkan.set @"pNext" Vulkan.VK_NULL
           &* Vulkan.set @"flags" 0
-          &* Vulkan.set @"setLayoutCount" 1
-          &* Vulkan.setListRef @"pSetLayouts" [ layout0 ]
-          &* Vulkan.set @"pPushConstantRanges" Vulkan.VK_NULL
+          &* Vulkan.set @"setLayoutCount" 0
+          &* Vulkan.setListRef @"pSetLayouts" [  ]
+          &* Vulkan.set @"pushConstantRangeCount" 1
+          &* Vulkan.setListRef @"pPushConstantRanges" [ pushConstantRange ]
           )
 
     in
@@ -1003,12 +1012,12 @@ createGraphicsPipeline device renderPass extent layout0 = do
       ( Vulkan.vkDestroyPipelineLayout device )
 
   vertexShader <-
-    loadShader device "/home/ollie/work/zero-to-quake3/vert.spv"
+  loadShader device "/home/ollie/work/zero-to-quake3/vert.spv"
 
   fragmentShader <-
     loadShader device "/home/ollie/work/zero-to-quake3/frag.spv"
 
-  let
+    let
     rasterizationCreateInfo =
       Vulkan.createVk
         (  Vulkan.set @"sType" Vulkan.VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO

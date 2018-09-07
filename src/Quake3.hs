@@ -238,9 +238,9 @@ enableSDLLogging =
   SDL.Raw.logSetAllPriority SDL.Raw.SDL_LOG_PRIORITY_VERBOSE
 
 
-  initializeSDL :: MonadIO m => m ()
-  initializeSDL =
-    SDL.initialize [ SDL.InitVideo ]
+initializeSDL :: MonadIO m => m ()
+initializeSDL =
+  SDL.initialize [ SDL.InitVideo ]
 
 
 createWindow :: MonadManaged m => m SDL.Window
@@ -1012,12 +1012,12 @@ createGraphicsPipeline device renderPass extent pushConstantsSize = do
       ( Vulkan.vkDestroyPipelineLayout device )
 
   vertexShader <-
-  loadShader device "/home/ollie/work/zero-to-quake3/vert.spv"
+    loadShader device "/home/ollie/work/zero-to-quake3/vert.spv"
 
   fragmentShader <-
     loadShader device "/home/ollie/work/zero-to-quake3/frag.spv"
 
-    let
+  let
     rasterizationCreateInfo =
       Vulkan.createVk
         (  Vulkan.set @"sType" Vulkan.VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO

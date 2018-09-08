@@ -1,5 +1,14 @@
+#Haskell build files etc
 *.hi
 *.o
-dist-newstyle/
-dist/
-.ghc.environment*
+*.prof
+*.hp
+*.ps
+*.log
+
+#HTML
+*.html
+*.json
+
+#Stack folder
+.stack-work/

@@ -1,0 +1,37 @@
+flags:
+  sdl2:
+    no-linear: true
+  transformers-compat:
+    five-three: true
+
+ghc-options:
+  vulkan-api: -O2
+  sdl2:       -O2
+
+packages:
+- .
+
+extra-deps:
+# sdl2-2.4.1.0 package with Vulkan support
+- git:    https://github.com/haskell-game/sdl2.git
+  commit: 791a5c7cf6c8999626ca6b919ce9caac314bba42
+- StateVar-1.1.1.1
+- exceptions-0.10.0
+- managed-1.0.6
+- primitive-0.6.4.0
+- transformers-compat-0.6.2
+- vector-0.12.0.1
+- vulkan-api-1.1.3.0
+# for type lits comparison
+- typelits-witnesses-0.3.0.2
+- base-compat-0.10.4
+- constraints-0.10.1
+- reflection-2.1.4
+- hashable-1.2.7.0
+- semigroups-0.18.5
+# knownnat plugins
+- ghc-typelits-knownnat-0.5.1
+- ghc-typelits-natnormalise-0.6.2
+- ghc-tcplugins-extra-0.3
+
+resolver: ghc-8.4.3

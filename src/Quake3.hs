@@ -1,13 +1,13 @@
-{-# language AllowAmbiguousTypes #-}
-{-# language GeneralizedNewtypeDeriving #-}
-{-# language DataKinds #-}
-{-# language FlexibleContexts #-}
-{-# language OverloadedStrings #-}
-{-# language RankNTypes #-}
-{-# language RecordWildCards #-}
-{-# language ScopedTypeVariables #-}
-{-# language TypeApplications #-}
-{-# language TypeFamilies #-}
+{-# LANGUAGE AllowAmbiguousTypes        #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DataKinds                  #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE RankNTypes                 #-}
+{-# LANGUAGE RecordWildCards            #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE TypeApplications           #-}
+{-# LANGUAGE TypeFamilies               #-}
 
 module Main ( main ) where
 
@@ -28,7 +28,7 @@ import qualified Foreign.Marshal
 import qualified Data.ByteString
 
 -- linear
-import Linear ( (!*!), identity, perspective, transpose, M44, V2(..), V3(..) )
+import Math.Linear ( (!*!), identity, perspective, transpose, V(..), (.:), M)
 
 -- managed
 import Control.Monad.Managed ( MonadManaged, runManaged )
@@ -116,7 +116,7 @@ main = runManaged $ do
     logMsg "Creating command pool"
       *> createCommandPool device queueFamilyIndex
 
-  queue <-
+  queue <- 
     getQueue device 0
 
   nextImageSem <-
@@ -128,11 +128,11 @@ main = runManaged $ do
   descriptorSetLayout <-
     createDescriptorSetLayout device
 
-  descriptorPool <-
-    createDescriptorPool device
+  --descriptorPool <-
+    --createDescriptorPool device
 
-  descriptorSet <-
-    allocateDescriptorSet device descriptorPool descriptorSetLayout
+  --descriptorSet <-
+    --allocateDescriptorSet device descriptorPool descriptorSetLayout
 
   let pushConstantsSize = fromIntegral ( 16 * Foreign.sizeOf ( undefined :: Foreign.C.CFloat ) )
 
@@ -141,32 +141,24 @@ main = runManaged $ do
 
   let
     vertices =
-      [ V2 ( V3 0 1 (-5) ) ( V3 1 0 0 )
-      , V2 ( V3 1 0 (-5) ) ( V3 1 0 0 )
-      , V2 ( V3 (-1) 0 (-5) ) ( V3 1 0 0 )
+      [ ( 0    :. 1 .: (-5) ) .: ( 1 :. 0 .: 0 )
+      , ( 1    :. 0 .: (-5) ) .: ( 1 :. 0 .: 0 )
+      , ( (-1) :. 0 .: (-5) ) .: ( 1 :. 0 .: 0 )
       ]
 
   vertexBuffer <-
     createVertexBuffer physicalDevice device vertices
 
   let
-    view =
+    view, model, projection, modelViewProjection :: M 4 4 Foreign.C.CFloat
+    view = 
       identity
-
-    model =
+    model = 
       identity
-
-    projection =
-      perspective ( pi / 2 ) ( 4 / 3 ) 0.1 100
-
-    modelViewProjection :: M44 Foreign.C.CFloat
+    projection = 
+      perspective ( pi / 6 ) ( 4 / 3 ) 0.1 100
     modelViewProjection =
       transpose ( projection !*! view !*! model )
-
-    m44toList :: M44 a -> [a]
-    m44toList = foldr (++) [] . fmap (foldr (:) [])
-
-  mvpArray <- liftIO ( Foreign.Marshal.newArray ( m44toList modelViewProjection ) )
 
 
   commandBuffers <-
@@ -190,13 +182,14 @@ main = runManaged $ do
           graphicsPipeline
 
 
-        Vulkan.vkCmdPushConstants
+        Foreign.with modelViewProjection $ \mvpPtr ->        
+          Vulkan.vkCmdPushConstants
           commandBuffer
           pipelineLayout
           Vulkan.VK_SHADER_STAGE_ALL
           0
           pushConstantsSize
-          (coerce mvpArray)
+          (coerce mvpPtr)
 
         Vulkan.vkCmdDraw
           commandBuffer
@@ -210,21 +203,22 @@ main = runManaged $ do
       endCommandBuffer commandBuffer
 
       return commandBuffer
+  
 
-  forever $ do
-    nextImageIndex <-
-      acquireNextImage device swapchain nextImageSem
+  --forever $ do
+  nextImageIndex <-
+    acquireNextImage device swapchain nextImageSem
 
-    let
-      commandBuffer =
-        commandBuffers !! nextImageIndex
+  let
+    commandBuffer =
+      commandBuffers !! nextImageIndex
 
-    submitCommandBuffer queue commandBuffer nextImageSem submitted
+  submitCommandBuffer queue commandBuffer nextImageSem submitted
 
-    present queue swapchain nextImageIndex submitted
+  present queue swapchain nextImageIndex submitted
 
-    liftIO ( Vulkan.vkQueueWaitIdle queue )
-      >>= throwVkResult
+  liftIO ( Vulkan.vkQueueWaitIdle queue )
+    >>= throwVkResult
 
   where
 
@@ -249,7 +243,7 @@ createWindow =
     ( SDL.createWindow
         "Vulkan Quake 3"
         SDL.defaultWindow
-          { SDL.windowVulkan = True
+          { SDL.windowGraphicsContext = SDL.VulkanContext
           }
     )
     SDL.destroyWindow
@@ -684,7 +678,6 @@ createCommandPool dev queueFamilyIndex = do
     )
     ( Vulkan.vkDestroyCommandPool dev )
 
-
 allocateCommandBuffer
   :: MonadManaged m
   => Vulkan.VkDevice
@@ -1012,10 +1005,10 @@ createGraphicsPipeline device renderPass extent pushConstantsSize = do
       ( Vulkan.vkDestroyPipelineLayout device )
 
   vertexShader <-
-    loadShader device "/home/ollie/work/zero-to-quake3/vert.spv"
+    loadShader device "C:\\MainDocuments\\Code\\Haskell\\zero-to-quake-3\\vert.spv"--"/home/ollie/work/zero-to-quake3/vert.spv"
 
   fragmentShader <-
-    loadShader device "/home/ollie/work/zero-to-quake3/frag.spv"
+    loadShader device "C:\\MainDocuments\\Code\\Haskell\\zero-to-quake-3\\frag.spv"--"/home/ollie/work/zero-to-quake3/frag.spv"
 
   let
     rasterizationCreateInfo =
@@ -1073,7 +1066,7 @@ createGraphicsPipeline device renderPass extent pushConstantsSize = do
         (  Vulkan.set @"location" 1
         &* Vulkan.set @"binding" 0
         &* Vulkan.set @"format" Vulkan.VK_FORMAT_R32G32B32_SFLOAT
-        &* Vulkan.set @"offset" ( fromIntegral ( Foreign.sizeOf ( undefined :: V3 Foreign.C.CFloat ) ) )
+        &* Vulkan.set @"offset" ( fromIntegral ( Foreign.sizeOf ( undefined :: V 3 Foreign.C.CFloat ) ) )
         )
 
     vertexInputState =
@@ -1259,7 +1252,7 @@ createUniformBuffer physicalDevice device bufferData =
 
 
 
-type Vertex = V2 ( V3 Foreign.C.CFloat )
+type Vertex = V 2 ( V 3 Foreign.C.CFloat )
 
 
 createBuffer

@@ -269,10 +269,11 @@ m !*^ v = fmap (\row -> sum $ zipWithV (*) row v) m
 
 
 lookAt :: (Num a, RealFloat a) => V 3 a -> V 3 a -> V 3 a -> M 4 4 a
-lookAt eye centre up =  (        xa <++> (-xd :. Nil)) 
-                     :. (        ya <++> (-yd :. Nil))
-                     :. ((-1) *^ za <++> ( zd :. Nil))
-                     .: (0 :. 0 :. 0 .: 1)
+lookAt eye centre up 
+  = V4 (         xa <++> (-xd :. Nil) ) 
+       (         ya <++> (-yd :. Nil) )
+       ( (-1) *^ za <++> ( zd :. Nil) )
+       ( V4 0 0 0 1 )
   where za = normalise (centre ^-^ eye)
         xa = normalise (za `cross` up)
         ya = xa `cross` za
@@ -281,10 +282,11 @@ lookAt eye centre up =  (        xa <++> (-xd :. Nil))
         zd = za ^.^ eye
   
 perspective :: (Num a, RealFloat a) => a -> a -> a -> a -> M 4 4 a
-perspective fovy aspect near far =  (x :. 0 :. 0    .: 0)
-                                 :. (0 :. y :. 0    .: 0)
-                                 :. (0 :. 0 :. z    .: w)
-                                 .: (0 :. 0 :. (-1) .: 0)
+perspective fovy aspect near far
+  = V4 ( V4 x 0   0  0 )
+       ( V4 0 y   0  0 )
+       ( V4 0 0   z  w )
+       ( V4 0 0 (-1) 0 )
   where tanHalfFovy = tan (fovy / 2)
         x = 1 / (aspect * tanHalfFovy)
         y = 1 / tanHalfFovy
@@ -292,4 +294,4 @@ perspective fovy aspect near far =  (x :. 0 :. 0    .: 0)
         w = 2 * near * far / (near - far)
 
 translation :: forall n a. (KnownNat n, Num a, RealFloat a) => V n a -> M (n+1) (n+1) a
-translation v = addCol zero (v <++> (0 :. Nil))
+translation v = ( zipWithV (<++>) identity ( fmap (:. Nil) v ) ) <++> ( ( repeatV 0 <++> (1 :. Nil) ) :. Nil)

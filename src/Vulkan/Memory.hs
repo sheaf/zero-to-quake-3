@@ -26,8 +26,9 @@ allocateMemoryFor
   => Vulkan.VkPhysicalDevice
   -> Vulkan.VkDevice
   -> Vulkan.VkMemoryRequirements
+  -> Vulkan.VkMemoryPropertyFlags
   -> m Vulkan.VkDeviceMemory
-allocateMemoryFor physicalDevice device requirements = do
+allocateMemoryFor physicalDevice device requirements requiredFlags = do
   memoryProperties <-
     allocaAndPeek
       ( Vulkan.vkGetPhysicalDeviceMemoryProperties physicalDevice )
@@ -46,8 +47,6 @@ allocateMemoryFor physicalDevice device requirements = do
       )
 
   let
-    requiredFlags =
-      Vulkan.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT .|. Vulkan.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
 
     possibleMemoryTypeIndices = do
       ( i, memoryType ) <-

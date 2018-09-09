@@ -36,11 +36,13 @@ data Quake3State = Quake3State
 newtype Quit = Quit Any
   deriving (Eq, Show, Semigroup, Monoid)
 
+
 data Action = Action
   { impulse :: V 3 ( Sum Foreign.C.CFloat )
   , rotate :: V 2 ( Sum Foreign.C.CFloat )
   , quitAction :: Quit
   } deriving(Generic)
+
 
 
 instance Semigroup Action where
@@ -58,13 +60,13 @@ step Quake3State
   let
     orientation =
       Quaternion.axisAngle ( V3 0 1 0 ) ( phi_x )
-        * Quaternion.axisAngle (V3 1 0 0 ) ( phi_y )
+        * Quaternion.axisAngle ( V3 1 0 0 ) ( phi_y )
   in
   Quake3State
     { cameraPosition =
         cameraPosition ^+^ Quaternion.rotate orientation ( fmap getSum impulse )
     , cameraAngles =
-        V2 phi_x phi_y ^+^ liftA2 (*) ( fmap getSum rotate ) ( V2 (-1) 1 )
+      V2 phi_x phi_y ^+^ liftA2 (*) ( fmap getSum rotate ) ( V2 (-1) 1 )
     , shouldQuit = quitAction
     }
 

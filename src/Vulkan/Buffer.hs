@@ -12,6 +12,7 @@ module Vulkan.Buffer
 -- base
 import Control.Monad ( (>=>) )
 import Control.Monad.IO.Class ( MonadIO, liftIO )
+import Data.Bits
 import qualified Foreign
 import qualified Foreign.Marshal
 
@@ -84,8 +85,11 @@ createBuffer device physicalDevice usage poke sizeInBytes = do
     allocaAndPeek
       ( Vulkan.vkGetBufferMemoryRequirements device buffer )
 
+  let 
+    requiredFlags = Vulkan.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT .|. Vulkan.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+
   memory <-
-    allocateMemoryFor physicalDevice device requirements
+    allocateMemoryFor physicalDevice device requirements requiredFlags
 
   liftIO
     ( Vulkan.vkBindBufferMemory device buffer memory 0

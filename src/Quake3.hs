@@ -15,14 +15,10 @@ import UnliftIO.IORef ( IORef, newIORef, readIORef, writeIORef )
 import qualified SDL
 
 -- vulkan-api
-import qualified Graphics.Vulkan as Vulkan ()
 import qualified Graphics.Vulkan.Core_1_0 as Vulkan
   ( vkQueueWaitIdle
   , VkCommandBuffer
   )
-import qualified Graphics.Vulkan.Ext.VK_KHR_surface as Vulkan ()
-import qualified Graphics.Vulkan.Ext.VK_KHR_swapchain as Vulkan ()
-
 -- zero-to-quake-3
 import Foreign.Vulkan ( throwVkResult )
 import Quake3.Context ( Context(..), withQuake3Context )
@@ -81,14 +77,14 @@ frame Context{..} resources commandBuffers stateRef = do
 
   writeIORef stateRef s1
 
-  Quake3.Render.updateFromModel resources s1
-
   nextImageIndex <-
     acquireNextImage device swapchain nextImageSem
 
   let
     commandBuffer =
       commandBuffers !! nextImageIndex
+
+  Quake3.Render.updateUniformBufferFromModel resources s1
 
   submitCommandBuffer queue commandBuffer nextImageSem submitted
 

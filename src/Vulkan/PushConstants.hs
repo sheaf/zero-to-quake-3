@@ -1,4 +1,5 @@
-{-# LANGUAGE GADTs           #-}
+{-# LANGUAGE GADTs              #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 module Vulkan.PushConstants
   ( PushConstants(..)
@@ -13,14 +14,17 @@ import qualified Graphics.Vulkan as Vulkan
 import qualified Graphics.Vulkan.Core_1_0 as Vulkan
 
 data PushConstants where
-  AnyConstants :: Foreign.Storable a => a -> Vulkan.Word32 -> PushConstants
+  AnyConstants :: (Show a, Foreign.Storable a) => a -> PushConstants
+
+deriving instance Show PushConstants
 
 updatePushConstants 
   :: Vulkan.VkCommandBuffer 
   -> Vulkan.VkPipelineLayout
+  -> Vulkan.Word32
   -> PushConstants
   -> IO ()
-updatePushConstants commandBuffer pipelineLayout (AnyConstants constants size)
+updatePushConstants commandBuffer pipelineLayout size (AnyConstants constants)
   = Foreign.with constants $ \ptr ->
       Vulkan.vkCmdPushConstants
         commandBuffer

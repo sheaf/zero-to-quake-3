@@ -60,6 +60,7 @@ data Context = Context
   , extent :: Vulkan.VkExtent2D
   , graphicsPipeline :: Vulkan.VkPipeline
   , pipelineLayout :: Vulkan.VkPipelineLayout
+  , pushSize :: Vulkan.Word32
   , swapchain :: Vulkan.VkSwapchainKHR
   , nextImageSem :: Vulkan.VkSemaphore
   , queue :: Vulkan.VkQueue

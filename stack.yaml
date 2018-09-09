@@ -28,7 +28,7 @@ extra-deps:
 - async-2.2.1
 - th-abstraction-0.2.8.0
 - unliftio-core-0.1.2.0
-# for type lits comparison
+# for type nats comparison
 - typelits-witnesses-0.3.0.2
 - base-compat-0.10.4
 - constraints-0.10.1

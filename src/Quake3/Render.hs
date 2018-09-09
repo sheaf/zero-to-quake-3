@@ -8,20 +8,21 @@ module Quake3.Render
   ( Resources
   , initResources
   , renderToFrameBuffer
-  , updateFromModel
+  , updateUniformBufferFromModel
   ) where
 
 -- base
 import Control.Monad.IO.Class ( MonadIO, liftIO )
 import Data.Coerce ( coerce )
 import Data.Word ( Word32 )
-import qualified Foreign
 import qualified Foreign.C
 
 -- linear
 import Math.Linear
   ( (!*!)
   , (^+^)
+  , identity
+  , blockSum
   , lookAt
   , perspective
   , translation
@@ -39,14 +40,11 @@ import qualified Math.Quaternion as Quaternion
 import Control.Monad.Managed ( MonadManaged )
 
 -- vulkan-api
-import qualified Graphics.Vulkan as Vulkan ()
 import qualified Graphics.Vulkan.Core_1_0 as Vulkan
   ( vkCmdDrawIndexed
   , VkCommandBuffer
   , VkFramebuffer
   )
-import qualified Graphics.Vulkan.Ext.VK_KHR_surface as Vulkan ()
-import qualified Graphics.Vulkan.Ext.VK_KHR_swapchain as Vulkan ()
 
 -- zero-to-quake-3
 import Quake3.Context ( Context(..) )
@@ -77,10 +75,10 @@ import Vulkan.RenderPass ( withRenderPass )
 
 
 data Resources = Resources
-  { vertexBuffer :: VertexBuffer
-  , indexBuffer :: IndexBuffer
+  { vertexBuffer  :: VertexBuffer
+  , indexBuffer   :: IndexBuffer
   , uniformBuffer :: UniformBuffer
-  , indices :: [ Word32 ]
+  , indices       :: [ Word32 ]
   , pushConstants :: PushConstants
   }
 
@@ -89,24 +87,22 @@ initResources :: MonadManaged m => Context -> m Resources
 initResources Context{..} = do
   let
     vertices =
-      [ V2 ( V3 (-1)   1    1  ) ( V3 1 0 0 )
-      , V2 ( V3   1    1    1  ) ( V3 1 0 0 )
-      , V2 ( V3 (-1) (-1)   1  ) ( V3 1 0 0 )
-      , V2 ( V3   1  (-1)   1  ) ( V3 1 0 0 )
-      , V2 ( V3 (-1)   1  (-1) ) ( V3 0 1 0 )
-      , V2 ( V3   1    1  (-1) ) ( V3 0 1 0 )
+      [ V2 ( V3 (-1)   1    1  ) ( V3 0 0 0 )
+      , V2 ( V3   1    1    1  ) ( V3 0 0 0 )
+      , V2 ( V3 (-1) (-1)   1  ) ( V3 0 0 0 )
+      , V2 ( V3   1  (-1)   1  ) ( V3 0 0 0 )
+      , V2 ( V3 (-1)   1  (-1) ) ( V3 1 0 0 )
+      , V2 ( V3   1    1  (-1) ) ( V3 1 1 0 )
       , V2 ( V3 (-1) (-1) (-1) ) ( V3 0 1 0 )
-      , V2 ( V3   1  (-1) (-1) ) ( V3 0 1 0 )
+      , V2 ( V3   1  (-1) (-1) ) ( V3 0 1 1 )
       ]
 
     indices =
       [ 2, 3, 0, 3, 0, 1
       , 6, 7, 4, 7, 4, 5
       ]
-    
-    pushConstants = AnyConstants 
-                      ( modelViewProjection (V3 0 0 0) (V2 0 0) )
-                      ( fromIntegral $ 16 * Foreign.sizeOf ( undefined :: Foreign.C.CFloat ) )
+
+    pushConstants = AnyConstants ( modelViewProjection (V3 0 0 0) (V2 0 0) )
 
   vertexBuffer <-
     createVertexBuffer physicalDevice device vertices
@@ -114,10 +110,8 @@ initResources Context{..} = do
   indexBuffer <-
     createIndexBuffer physicalDevice device indices
 
-  -- not currently using uniform buffers
-
   uniformBuffer <-
-    createUniformBuffer physicalDevice device (1337 :: Foreign.C.CFloat) --( modelViewProjection 0 0 )
+    createUniformBuffer physicalDevice device ( modelViewProjection (V3 0 0 0) (V2 0 0) )
 
   updateDescriptorSet device descriptorSet uniformBuffer
   
@@ -142,7 +136,9 @@ renderToFrameBuffer Context{..} Resources{..} framebuffer = do
 
       bindDescriptorSets commandBuffer pipelineLayout [ descriptorSet ]
 
-      liftIO ( updatePushConstants commandBuffer pipelineLayout pushConstants )
+      liftIO . print $ pushConstants
+
+      liftIO ( updatePushConstants commandBuffer pipelineLayout pushSize pushConstants )
 
       liftIO 
         ( Vulkan.vkCmdDrawIndexed
@@ -157,14 +153,15 @@ renderToFrameBuffer Context{..} Resources{..} framebuffer = do
   return commandBuffer
 
 
-updateFromModel
+updateUniformBufferFromModel
   :: MonadIO m
-  => Resources -> Quake3.Model.Quake3State -> m ()
-updateFromModel Resources{..} Quake3.Model.Quake3State{..} =
+  => Resources 
+  -> Quake3.Model.Quake3State
+  -> m ()
+updateUniformBufferFromModel Resources{..} Quake3.Model.Quake3State{..} =
   pokeBuffer
     ( coerce uniformBuffer )
     ( modelViewProjection cameraPosition cameraAngles )
-
 
 modelViewProjection
   :: V 3 Foreign.C.CFloat
@@ -191,10 +188,9 @@ modelViewProjection cameraPosition ( V2 x y ) =
       let
         rotate :: M 4 4 Foreign.C.CFloat
         rotate =
-          ( (<++> (V4 0 0 0 0 :. Nil)) . fmap (<++> (0 :. Nil)) ) -- extend by 0...
-            ( Quaternion.fromQuaternion
+            Quaternion.fromQuaternion
                 ( Quaternion.axisAngle ( V3 1 1 1 )  ( pi / 5 ) )
-            )
+            `blockSum` identity
 
         translate = translation (V3 0 0 (-5))
 
@@ -202,7 +198,7 @@ modelViewProjection cameraPosition ( V2 x y ) =
       translate !*! rotate
 
     projection =
-      perspective ( pi / 2 ) ( 4 / 3 ) 0.1 100
+      perspective ( pi / 6 ) ( 4 / 3 ) 0.1 100
 
   in
   transpose ( projection !*! view !*! model )

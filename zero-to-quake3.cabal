@@ -17,16 +17,48 @@ cabal-version:       >=1.10
 
 executable zero-to-quake3
   main-is:             Quake3.hs
-  -- other-modules:
+  other-modules:
+    Control.Monad.Managed.Extra
+    Foreign.Marshal.Extra
+    Foreign.Vulkan
+    Math.Linear
+    Math.Quaternion
+    Quake3.Context
+    Quake3.Input
+    Quake3.Model
+    Quake3.Render
+    Quake3.Vertex
+    Vulkan.Buffer
+    Vulkan.Buffer.IndexBuffer
+    Vulkan.Buffer.UniformBuffer
+    Vulkan.Buffer.VertexBuffer
+    Vulkan.CommandBuffer
+    Vulkan.CommandPool
+    Vulkan.DescriptorSet
+    Vulkan.Device
+    Vulkan.Framebuffer
+    Vulkan.Image
+    Vulkan.ImageView
+    Vulkan.Instance
+    Vulkan.Memory
+    Vulkan.PhysicalDevice
+    Vulkan.Pipeline
+    Vulkan.PushConstants
+    Vulkan.RenderPass
+    Vulkan.Semaphore
+    Vulkan.WSI
   -- other-extensions:
   build-depends:       base >= 4.10
                      , sdl2 >= 2.4.0.2
                      , vulkan-api
                      , managed
                      , bytestring
+                     , unliftio
+                     , generic-deriving
                      , typelits-witnesses >= 0.2.3
                      , ghc-typelits-knownnat >= 0.3.1
                      , ghc-typelits-natnormalise >= 0.5.7
+
   --extra-libraries: vulkan
   hs-source-dirs:      src
   default-language:    Haskell2010

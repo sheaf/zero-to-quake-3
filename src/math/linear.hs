@@ -105,11 +105,11 @@ infixl 6 <++>
 (<++>) :: (KnownNat n, KnownNat m) => V n a -> V m a -> V (n+m) a
 (<++>) Nil      v = v
 (<++>) (a:.Nil) v = a :. v
-(<++>) (a:.as)   v = a :. (as <++> v)
+(<++>) (a:.as)  v = a :. (as <++> v)
 
 instance KnownNat n => Applicative (V n) where
-  pure = repeatV
-  Nil      <*>  _        = Nil
+  pure                    = repeatV
+  Nil       <*>  _        = Nil
   (f :. fs) <*> (a :. as) = f a :. fs <*> as
 
 infixl 6 ^+^, ^-^

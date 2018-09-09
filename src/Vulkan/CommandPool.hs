@@ -27,7 +27,7 @@ createCommandPool dev queueFamilyIndex = do
       Vulkan.createVk
         (  Vulkan.set @"sType" Vulkan.VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO
         &* Vulkan.set @"pNext" Vulkan.vkNullPtr
-        &* Vulkan.set @"flags" 0
+        &* Vulkan.set @"flags" Vulkan.VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
         &* Vulkan.set @"queueFamilyIndex" ( fromIntegral queueFamilyIndex )
         )
 

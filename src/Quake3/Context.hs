@@ -13,9 +13,6 @@ import qualified Foreign.C
 -- managed
 import Control.Monad.Managed ( MonadManaged )
 
--- linear
-import Math.Linear ( M )
-
 -- sdl2
 import qualified SDL
 import qualified SDL.Raw
@@ -60,7 +57,6 @@ data Context = Context
   , extent :: Vulkan.VkExtent2D
   , graphicsPipeline :: Vulkan.VkPipeline
   , pipelineLayout :: Vulkan.VkPipelineLayout
-  , pushSize :: Vulkan.Word32
   , swapchain :: Vulkan.VkSwapchainKHR
   , nextImageSem :: Vulkan.VkSemaphore
   , queue :: Vulkan.VkQueue
@@ -158,8 +154,6 @@ withQuake3Context action = do
   submitted <-
     createSemaphore device
 
-  ----------------------
-  -- not needed currently because using push constants instead of uniform buffer objects
   descriptorSetLayout <-
     createDescriptorSetLayout device
 
@@ -167,14 +161,9 @@ withQuake3Context action = do
 
   descriptorSet <-
     allocateDescriptorSet device descriptorPool descriptorSetLayout
-  ----------------------
-  
-
-  -- TODO: remove hard coding of push constants size
-  let pushSize = fromIntegral ( Foreign.sizeOf ( undefined :: M 4 4 Foreign.C.CFloat ) )
 
   ( graphicsPipeline, pipelineLayout ) <-
-    createPipeline device renderPass extent [descriptorSetLayout] pushSize
+    createPipeline device renderPass extent [descriptorSetLayout]
 
   action Context {..}
 

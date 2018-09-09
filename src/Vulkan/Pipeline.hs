@@ -40,18 +40,10 @@ createPipeline
   -> Vulkan.VkRenderPass
   -> Vulkan.VkExtent2D
   -> [Vulkan.VkDescriptorSetLayout]
-  -> Vulkan.Word32
   -> m ( Vulkan.VkPipeline, Vulkan.VkPipelineLayout )
-createPipeline device renderPass extent layouts pushConstantsSize = do
+createPipeline device renderPass extent layouts = do
   pipelineLayout <-
     let
-      pushConstantRange =
-        Vulkan.createVk
-          (  Vulkan.set @"stageFlags" Vulkan.VK_SHADER_STAGE_ALL
-          &* Vulkan.set @"offset" 0
-          &* Vulkan.set @"size" pushConstantsSize
-          )
-
       pipelineLayoutCreateInfo =
         Vulkan.createVk
           (  Vulkan.set @"sType" Vulkan.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO
@@ -59,8 +51,8 @@ createPipeline device renderPass extent layouts pushConstantsSize = do
           &* Vulkan.set @"flags" 0
           &* Vulkan.set @"setLayoutCount" (fromIntegral $ length layouts)
           &* Vulkan.setListRef @"pSetLayouts" layouts
-          &* Vulkan.set @"pushConstantRangeCount" 1
-          &* Vulkan.setListRef @"pPushConstantRanges" [ pushConstantRange ]
+          &* Vulkan.set @"pushConstantRangeCount" 0
+          &* Vulkan.setListRef @"pPushConstantRanges" [ ]
           )
 
     in

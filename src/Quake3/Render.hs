@@ -1,8 +1,9 @@
-{-# language DataKinds       #-}
-{-# language GADTs           #-}
-{-# language PatternSynonyms #-}
-{-# language RankNTypes      #-}
-{-# language RecordWildCards #-}
+{-# language DataKinds          #-}
+{-# language GADTs              #-}
+{-# language PatternSynonyms    #-}
+{-# language RankNTypes         #-}
+{-# language RecordWildCards    #-}
+{-# language StandaloneDeriving #-}
 
 module Quake3.Render
   ( Resources
@@ -31,8 +32,6 @@ import Math.Linear
   , M
   , pattern V2
   , pattern V3
-  , pattern V4
-  , (<++>)
   )
 import qualified Math.Quaternion as Quaternion
 
@@ -70,7 +69,6 @@ import Vulkan.DescriptorSet
   , updateDescriptorSet
   )
 import Vulkan.Pipeline ( bindPipeline )
-import Vulkan.PushConstants ( PushConstants(..), updatePushConstants )
 import Vulkan.RenderPass ( withRenderPass )
 
 
@@ -79,7 +77,6 @@ data Resources = Resources
   , indexBuffer   :: IndexBuffer
   , uniformBuffer :: UniformBuffer
   , indices       :: [ Word32 ]
-  , pushConstants :: PushConstants
   }
 
 
@@ -102,8 +99,6 @@ initResources Context{..} = do
       , 6, 7, 4, 7, 4, 5
       ]
 
-    pushConstants = AnyConstants ( modelViewProjection (V3 0 0 0) (V2 0 0) )
-
   vertexBuffer <-
     createVertexBuffer physicalDevice device vertices
 
@@ -115,7 +110,6 @@ initResources Context{..} = do
 
   updateDescriptorSet device descriptorSet uniformBuffer
   
-
   return Resources{..}
 
 
@@ -127,6 +121,7 @@ renderToFrameBuffer Context{..} Resources{..} framebuffer = do
     allocateCommandBuffer device commandPool
 
   withCommandBuffer commandBuffer $ do
+
     bindVertexBuffers commandBuffer [ vertexBuffer ]
 
     bindIndexBuffer commandBuffer indexBuffer
@@ -135,10 +130,6 @@ renderToFrameBuffer Context{..} Resources{..} framebuffer = do
       bindPipeline commandBuffer graphicsPipeline
 
       bindDescriptorSets commandBuffer pipelineLayout [ descriptorSet ]
-
-      liftIO . print $ pushConstants
-
-      liftIO ( updatePushConstants commandBuffer pipelineLayout pushSize pushConstants )
 
       liftIO 
         ( Vulkan.vkCmdDrawIndexed
@@ -162,6 +153,7 @@ updateUniformBufferFromModel Resources{..} Quake3.Model.Quake3State{..} =
   pokeBuffer
     ( coerce uniformBuffer )
     ( modelViewProjection cameraPosition cameraAngles )
+
 
 modelViewProjection
   :: V 3 Foreign.C.CFloat
@@ -200,5 +192,4 @@ modelViewProjection cameraPosition ( V2 x y ) =
     projection =
       perspective ( pi / 6 ) ( 4 / 3 ) 0.1 100
 
-  in
-  transpose ( projection !*! view !*! model )
+  in transpose ( projection !*! view !*! model )

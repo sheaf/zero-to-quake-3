@@ -67,7 +67,8 @@ withCommandBuffer commandBuffer action = do
         )
 
   let
-    begin =
+    begin = do
+
       liftIO
         ( Vulkan.vkBeginCommandBuffer
             commandBuffer
@@ -75,7 +76,7 @@ withCommandBuffer commandBuffer action = do
             >>= throwVkResult
         )
 
-    end =
+    end = do
       liftIO ( Vulkan.vkEndCommandBuffer commandBuffer >>= throwVkResult )
 
   begin *> action <* end

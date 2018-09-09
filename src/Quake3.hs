@@ -28,7 +28,6 @@ import qualified Quake3.Model
 import Vulkan.CommandBuffer ( submitCommandBuffer )
 import Vulkan.WSI ( acquireNextImage , present )
 
-
 main :: IO ()
 main =
   runManaged

@@ -171,10 +171,12 @@ modelViewProjection cameraPosition ( V2 x y ) =
     model =
       let
         rotate :: M 4 4 Foreign.C.CFloat
-        rotate =
+        rotate = identity
+        {-
             Quaternion.fromQuaternion
                 ( Quaternion.axisAngle ( V3 1 1 1 )  ( pi / 5 ) )
             `blockSum` identity
+        -}
 
         translate = translation (V3 0 0 (-5))
 

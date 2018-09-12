@@ -13,7 +13,7 @@ module Vulkan.WSI
 -- base
 import Control.Monad ( (>=>), unless )
 import Control.Monad.IO.Class ( MonadIO, liftIO )
-import Data.List hiding ( transpose )
+import Data.List ( sortOn )
 import Data.Ord ( Down(..) )
 import qualified Foreign
 

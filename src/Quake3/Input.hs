@@ -42,16 +42,16 @@ keyboardEventToAction SDL.Event.KeyboardEventData{..} | keyboardEventKeyMotion =
         fmap Sum
           ( case SDL.keysymScancode keyboardEventKeysym of
               SDL.ScancodeW ->
-                V3 0 0 (-0.1)
+                V3 0 0 (-5)
 
               SDL.ScancodeS ->
-                V3 0 0 0.1
+                V3 0 0 5
 
               SDL.ScancodeA ->
-                V3 (-0.1) 0 0
+                V3 (-5) 0 0
 
               SDL.ScancodeD ->
-                V3 0.1 0 0
+                V3 5 0 0
 
               _ -> V3 0 0 0
           )

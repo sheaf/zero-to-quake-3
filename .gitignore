@@ -12,3 +12,6 @@
 
 #Stack folder
 .stack-work/
+
+#BSP files
+BSP/

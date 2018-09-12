@@ -59,13 +59,13 @@ zipWithV _ Nil      _      = Nil
 zipWithV f (a:.as) (b:.bs) = f a b :. zipWithV f as bs
 
 instance (KnownNat n, Eq a) => Eq (V n a) where
-  (==) = (foldr (&&) True .) . zipWithV (==)
+  (==) = (and .) . zipWithV (==)
 
 deduceZero :: KnownNat n => (1 <=? n) :~: 'False -> (n :~: 0)
 deduceZero = unsafeCoerce
 
 repeatV :: forall a n. KnownNat n => a -> V n a
-repeatV a = unfold id a
+repeatV = unfold id
 
 instance (KnownNat n, Storable a) => Storable (V n a) where
   sizeOf :: V n a -> Int
@@ -82,7 +82,7 @@ instance (KnownNat n, Storable a) => Storable (V n a) where
               go v (n# +# 1#)
   
   peek :: Ptr (V n a) -> IO (V n a)
-  peek ptr = sequence . fmap (peekElemOff (castPtr ptr)) $ ixVec
+  peek ptr = traverse (peekElemOff (castPtr ptr)) $ ixVec
       where ixVec :: V n Int
             ixVec = unfold pred (fromInteger $ natVal (Proxy @n))
 
@@ -146,7 +146,7 @@ class Vector v => Inner v where
   dot   = (^.^)
 
 instance (Num a, RealFloat a, KnownNat n) => Inner (V n a) where
-  (^.^) = (foldr (+) 0 .) . zipWithV (*)
+  (^.^) = (sum .) . zipWithV (*)
 
 class Inner v => Cross v where
   (^×^), cross :: v -> v -> v

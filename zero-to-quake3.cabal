@@ -23,6 +23,7 @@ executable zero-to-quake3
     Foreign.Vulkan
     Math.Linear
     Math.Quaternion
+    Quake3.BSP
     Quake3.Context
     Quake3.Input
     Quake3.Model
@@ -53,6 +54,7 @@ executable zero-to-quake3
                      , managed
                      , bytestring
                      , unliftio
+                     , binary
                      , generic-deriving
                      , typelits-witnesses >= 0.2.3
                      , ghc-typelits-knownnat >= 0.3.1

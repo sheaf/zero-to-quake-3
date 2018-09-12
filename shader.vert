@@ -9,13 +9,13 @@ layout(location = 0) out vec3 fragColor;
 
 layout(location = 0) in vec3 position;
 
-layout(location = 1) in vec3 color;
+layout(location = 1) in uvec4 color;
 
 layout(binding = 0) uniform Object {
     mat4 mvp;
 } obj;
 
 void main() {
-    gl_Position = obj.mvp * vec4(position.xyz, 1);
-    fragColor = color;
+    gl_Position = obj.mvp * vec4(vec3(1,-1,1)*position.xzy, 1);
+    fragColor = color.xyz / 255.0;
 }

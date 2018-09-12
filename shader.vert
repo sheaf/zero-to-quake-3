@@ -16,6 +16,6 @@ layout(binding = 0) uniform Object {
 } obj;
 
 void main() {
-    gl_Position = obj.mvp * vec4(vec3(1,-1,1)*position.xzy, 1);
+    gl_Position = obj.mvp * vec4(position.xyz, 1);
     fragColor = color.xyz / 255.0;
 }

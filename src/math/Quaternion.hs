@@ -13,7 +13,7 @@
 
 module Math.Quaternion where
 
-import Math.Linear(V(..), M, pattern V3, pattern V4, (.:), Vector(..), Inner(..), norm, normalise)
+import Math.Linear(V(..), M, pattern V3, pattern V4, Vector(..), Inner(..), norm, normalise)
 
 newtype Quaternion a = Quaternion { quaternion :: V 4 a }
 

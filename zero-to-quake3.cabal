@@ -21,6 +21,7 @@ executable zero-to-quake3
     Control.Monad.Managed.Extra
     Foreign.Marshal.Extra
     Foreign.Vulkan
+    Math.Coordinates
     Math.Linear
     Math.Quaternion
     Quake3.BSP

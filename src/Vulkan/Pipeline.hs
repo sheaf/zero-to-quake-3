@@ -10,13 +10,9 @@ module Vulkan.Pipeline
 import Control.Monad.IO.Class ( MonadIO, liftIO )
 import Data.Bits
 import qualified Foreign
-import qualified Foreign.C
 
 -- bytestring
 import qualified Data.ByteString
-
--- linear
-import Math.Linear ( V )
 
 -- managed
 import Control.Monad.Managed ( MonadManaged )

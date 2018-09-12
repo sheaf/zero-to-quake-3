@@ -34,14 +34,10 @@ import GHC.TypeNats(type (<=?))
 import Unsafe.Coerce(unsafeCoerce)
 
 infixr 3 :.
-infix  4 .:
 
 data V :: Nat -> Type -> Type where
   Nil :: V 0 a
   (:.) :: KnownNat n => a -> V n a -> V (n+1) a
-
-(.:) :: a -> a -> V 2 a
-(.:) a b = a :. b :. Nil
 
 deriving instance KnownNat n => Functor     (V n)
 deriving instance KnownNat n => Foldable    (V n)
@@ -127,9 +123,24 @@ class (Num (Scalar v), RealFloat (Scalar v), KnownNat (Dim v)) => Vector v where
   components :: v -> V (Dim v) (Scalar v)
   fromComponents :: V (Dim v) (Scalar v) -> v
 
+{-# COMPLETE V0 #-}
+pattern V0 :: V 0 a
+pattern V0 = Nil
 
+{-# COMPLETE V1 #-}
+pattern V1 :: a -> V 1 a
+pattern V1 x = x :. Nil
+
+{-# COMPLETE V2 #-}
+pattern V2 :: a -> a -> V 2 a
 pattern V2 x y = x :. y :. Nil
+
+{-# COMPLETE V3 #-}
+pattern V3 :: a -> a -> a -> V 3 a
 pattern V3 x y z = x :. y :. z :. Nil
+
+{-# COMPLETE V4 #-}
+pattern V4 :: a -> a -> a -> a -> V 4 a
 pattern V4 x y z w = x :. y :. z :. w :. Nil
 
 instance (Num a, RealFloat a, KnownNat n) => Vector (V n a) where
@@ -153,7 +164,7 @@ class Inner v => Cross v where
   cross = (^×^)
 
 instance (Num a, RealFloat a) => Cross (V 3 a) where
-  (x :. y :. z :. Nil) ^×^ (x' :. y' :. z' :. Nil) = a :. b :. c :. Nil
+  (V3 x y z) ^×^ (V3 x' y' z') = V3 a b c
     where a = y * z' - z * y'
           b = z * x' - x * z'
           c = x * y' - y * x'
@@ -268,11 +279,33 @@ m1 !*! m2 = fmap (\row -> fmap (sum . zipWithV (*) row) (transpose m2)) m1
 m !*^ v = fmap (\row -> sum $ zipWithV (*) row v) m
 
 
+
+inverse :: (KnownNat n, Num a, Fractional a, n ~ 3) => M n n a -> M n n a
+inverse ( V3 (V3 a b c)
+             (V3 d e f)
+             (V3 g h i)
+        )
+  = (fmap . fmap) (/ det)
+      ( V3 ( V3 r s t)
+           ( V3 u v w)
+           ( V3 x y z)
+      )
+  where det = a * r + b * u + c * x
+        r = e * i - f * h
+        s = c * h - b * i
+        t = b * f - c * e
+        u = f * g - d * i
+        v = a * i - c * g
+        w = c * d - a * f
+        x = d * h - e * g
+        y = b * g - a * h
+        z = a * e - b * d
+
 lookAt :: (Num a, RealFloat a) => V 3 a -> V 3 a -> V 3 a -> M 4 4 a
 lookAt eye centre up 
-  = V4 (         xa <++> (-xd :. Nil) ) 
-       (         ya <++> (-yd :. Nil) )
-       ( (-1) *^ za <++> ( zd :. Nil) )
+  = V4 (         xa <++> V1 (-xd) ) 
+       (         ya <++> V1 (-yd) )
+       ( (-1) *^ za <++> V1 ( zd) )
        ( V4 0 0 0 1 )
   where za = normalise (centre ^-^ eye)
         xa = normalise (za `cross` up)
@@ -294,4 +327,4 @@ perspective fovy aspect near far
         w = 2 * near * far / (near - far)
 
 translation :: forall n a. (KnownNat n, Num a, RealFloat a) => V n a -> M (n+1) (n+1) a
-translation v = ( zipWithV (<++>) identity ( fmap (:. Nil) v ) ) <++> ( ( repeatV 0 <++> (1 :. Nil) ) :. Nil)
+translation v = ( zipWithV (<++>) identity ( fmap (:. Nil) v ) ) <++> ( ( repeatV 0 <++> V1 1 ) :. Nil)

@@ -36,6 +36,7 @@ import Math.Linear
   , pattern V2
   , pattern V3
   )
+import Math.Coordinates(Representation(..), MatrixWithRep(..), q3ToVk)
 import qualified Math.Quaternion as Quaternion
 
 -- managed
@@ -150,7 +151,7 @@ updateUniformBufferFromModel Resources{..} Quake3.Model.Quake3State{..} =
 modelViewProjection
   :: V 3 Foreign.C.CFloat
   -> V 2 Foreign.C.CFloat
-  -> M 4 4 Foreign.C.CFloat
+  -> MatrixWithRep 'RowMajor 4 4 Foreign.C.CFloat
 modelViewProjection cameraPosition ( V2 x y ) =
   let
     view =
@@ -186,4 +187,4 @@ modelViewProjection cameraPosition ( V2 x y ) =
     projection =
       perspective ( pi / 2 ) ( 4 / 3 ) 0.1 100000
 
-  in transpose ( projection !*! view !*! model )
+  in MatrixWithRep (projection !*! view !*! model !*! q3ToVk)

@@ -17,7 +17,7 @@ import Data.Monoid ( Any(..), Sum(..) )
 import qualified Foreign.C
 
 -- linear
-import Math.Linear ( V(..), (.:), (^+^), pattern V2, pattern V3 )
+import Math.Linear ( V(..), (^+^), pattern V2, pattern V3 )
 import qualified Math.Quaternion as Quaternion
 
 -- zero-to-quake-3

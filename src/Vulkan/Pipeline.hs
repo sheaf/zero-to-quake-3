@@ -25,9 +25,7 @@ import qualified Graphics.Vulkan.Marshal.Create as Vulkan
 
 -- zero-to-quake-3
 import Foreign.Vulkan ( managedVulkanResource )
-
--- TODO Remove this coupling
-import Quake3.Vertex
+import qualified Vulkan.VertexFormat as VertexFormat
 
 
 createPipeline
@@ -35,9 +33,10 @@ createPipeline
   => Vulkan.VkDevice
   -> Vulkan.VkRenderPass
   -> Vulkan.VkExtent2D
-  -> [Vulkan.VkDescriptorSetLayout]
+  -> Vulkan.VkDescriptorSetLayout
+  -> VertexFormat.VertexFormat v
   -> m ( Vulkan.VkPipeline, Vulkan.VkPipelineLayout )
-createPipeline device renderPass extent layouts = do
+createPipeline device renderPass extent layout0 vertexFormat = do
   pipelineLayout <-
     let
       pipelineLayoutCreateInfo =
@@ -45,8 +44,8 @@ createPipeline device renderPass extent layouts = do
           (  Vulkan.set @"sType" Vulkan.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO
           &* Vulkan.set @"pNext" Vulkan.VK_NULL
           &* Vulkan.set @"flags" 0
-          &* Vulkan.set @"setLayoutCount" (fromIntegral $ length layouts)
-          &* Vulkan.setListRef @"pSetLayouts" layouts
+          &* Vulkan.set @"setLayoutCount" 1
+          &* Vulkan.setListRef @"pSetLayouts" [ layout0 ]
           &* Vulkan.set @"pushConstantRangeCount" 0
           &* Vulkan.setListRef @"pPushConstantRanges" [ ]
           )
@@ -80,6 +79,7 @@ createPipeline device renderPass extent layouts = do
         &* Vulkan.set @"depthBiasClamp" 0
         &* Vulkan.set @"depthBiasConstantFactor" 0
         &* Vulkan.set @"frontFace" Vulkan.VK_FRONT_FACE_CLOCKWISE
+        &* Vulkan.set @"cullMode" Vulkan.VK_CULL_MODE_BACK_BIT
         )
 
     vertexShaderStage =
@@ -105,41 +105,12 @@ createPipeline device renderPass extent layouts = do
     vertexBindingDescription =
       Vulkan.createVk
         (  Vulkan.set @"binding" 0
-        &* Vulkan.set @"stride" ( fromIntegral ( Foreign.sizeOf ( undefined :: Vertex ) ) )
+        &* Vulkan.set @"stride" ( fromIntegral ( VertexFormat.strideSize vertexFormat ) )
         &* Vulkan.set @"inputRate" Vulkan.VK_VERTEX_INPUT_RATE_VERTEX
         )
 
-    positionAttributeDescription =
-      Vulkan.createVk
-        (  Vulkan.set @"location" 0
-        &* Vulkan.set @"binding" 0
-        &* Vulkan.set @"format" Vulkan.VK_FORMAT_R32G32B32_SFLOAT
-        &* Vulkan.set @"offset" 0
-        )
-
-    colorAttributeDescription =
-      Vulkan.createVk
-        (  Vulkan.set @"location" 1
-        &* Vulkan.set @"binding" 0
-        &* Vulkan.set @"format" Vulkan.VK_FORMAT_R8G8B8A8_UINT
-        &* Vulkan.set
-             @"offset"
-             ( fromIntegral
-                 ( let
-                     v :: Vertex
-                     v =
-                       undefined
-
-                   in
-                   sum
-                     [ Foreign.sizeOf ( vPos        v )
-                     , Foreign.sizeOf ( vSurfaceUV  v )
-                     , Foreign.sizeOf ( vLightmapUV v )
-                     , Foreign.sizeOf ( vNormal     v )
-                     ]
-                 )
-             )
-        )
+    vertexInputAttributeDescriptions =
+      VertexFormat.attributeDescriptions 0 vertexFormat
 
     vertexInputState =
       Vulkan.createVk
@@ -147,12 +118,8 @@ createPipeline device renderPass extent layouts = do
         &* Vulkan.set @"pNext" Vulkan.VK_NULL
         &* Vulkan.set @"vertexBindingDescriptionCount" 1
         &* Vulkan.setListRef @"pVertexBindingDescriptions" [ vertexBindingDescription ]
-        &* Vulkan.set @"vertexAttributeDescriptionCount" 2
-        &* Vulkan.setListRef
-             @"pVertexAttributeDescriptions"
-             [ positionAttributeDescription
-             , colorAttributeDescription
-             ]
+        &* Vulkan.set @"vertexAttributeDescriptionCount" ( fromIntegral ( length vertexInputAttributeDescriptions ) )
+        &* Vulkan.setListRef @"pVertexAttributeDescriptions" vertexInputAttributeDescriptions
         )
 
     assemblyStateCreateInfo =

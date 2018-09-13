@@ -66,11 +66,8 @@ createDepthImage physicalDevice device depthFormat extent = do
     allocaAndPeek
       ( Vulkan.vkGetImageMemoryRequirements device image )
 
-  let 
-    requiredFlags = 1 -- no flags
-
   memory <-
-    allocateMemoryFor physicalDevice device memoryRequirements requiredFlags
+    allocateMemoryFor physicalDevice device memoryRequirements []
 
   liftIO
     ( Vulkan.vkBindImageMemory device image memory 0

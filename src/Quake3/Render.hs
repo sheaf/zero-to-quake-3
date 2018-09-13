@@ -4,6 +4,7 @@
 {-# language RankNTypes         #-}
 {-# language RecordWildCards    #-}
 {-# language StandaloneDeriving #-}
+{-# language TypeApplications   #-}
 
 module Quake3.Render
   ( Resources
@@ -17,20 +18,18 @@ import Control.Monad ( when )
 import Control.Monad.IO.Class ( MonadIO, liftIO )
 import Data.Coerce ( coerce )
 import Data.Foldable ( for_ )
-import Data.Word ( Word32 )
 import qualified Foreign.C
-import qualified Data.ByteString.Lazy
+
+-- contravariant
+import Data.Functor.Contravariant
 
 -- linear
 import Math.Linear
   ( (!*!)
   , (^+^)
   , identity
-  , blockSum
   , lookAt
   , perspective
-  , translation
-  , transpose
   , V(..)
   , M
   , pattern V2
@@ -74,13 +73,14 @@ import Vulkan.DescriptorSet
   , updateDescriptorSet
   )
 import Vulkan.Pipeline ( bindPipeline )
+import qualified Vulkan.Poke
 import Vulkan.RenderPass ( withRenderPass )
 
 
 data Resources = Resources
-  { vertexBuffer  :: VertexBuffer
-  , indexBuffer   :: IndexBuffer
-  , uniformBuffer :: UniformBuffer
+  { vertexBuffer :: VertexBuffer VertexList
+  , indexBuffer :: IndexBuffer MeshVertList
+  , uniformBuffer :: UniformBuffer ( MatrixWithRep 'RowMajor 4 4 Foreign.C.CFloat )
   , q3map :: BSP
   }
 
@@ -91,13 +91,25 @@ initResources Context{..} = do
     loadBSP "BSP/q3dm1.bsp"
 
   vertexBuffer <-
-    createVertexBuffer physicalDevice device ( bspVertices q3map )
+    createVertexBuffer
+      physicalDevice
+      device
+      ( contramap vertexListBytes Vulkan.Poke.pokeLazyBytestring )
+      ( bspVertices q3map )
 
   indexBuffer <-
-    createIndexBuffer physicalDevice device ( bspMeshVerts q3map )
+    createIndexBuffer
+      physicalDevice
+      device
+      ( contramap meshVertListBytes Vulkan.Poke.pokeLazyBytestring )
+      ( bspMeshVerts q3map )
 
   uniformBuffer <-
-    createUniformBuffer physicalDevice device ( modelViewProjection (V3 0 0 0) (V2 0 0) )
+    createUniformBuffer
+      physicalDevice
+      device
+      Vulkan.Poke.storable
+      ( modelViewProjection (V3 0 0 0) (V2 0 0) )
 
   updateDescriptorSet device descriptorSet uniformBuffer
   
@@ -124,7 +136,7 @@ renderToFrameBuffer Context{..} Resources{..} framebuffer = do
 
       liftIO
         ( for_ ( bspFaces q3map ) $ \face ->
-            when ( faceType face == 1 ) $
+            when ( faceType face == 1 || faceType face == 3 ) $
               Vulkan.vkCmdDrawIndexed
                 commandBuffer
                 ( fromIntegral ( faceNMeshVerts face ) ) -- indexCount
@@ -169,20 +181,7 @@ modelViewProjection cameraPosition ( V2 x y ) =
       in
       lookAt cameraPosition ( cameraPosition ^+^ forward ) up
 
-    model =
-      let
-        rotate :: M 4 4 Foreign.C.CFloat
-        rotate = identity
-        {-
-            Quaternion.fromQuaternion
-                ( Quaternion.axisAngle ( V3 1 1 1 )  ( pi / 5 ) )
-            `blockSum` identity
-        -}
-
-        translate = translation (V3 0 0 (-5))
-
-      in
-      translate !*! rotate
+    model = identity
 
     projection =
       perspective ( pi / 2 ) ( 4 / 3 ) 0.1 100000

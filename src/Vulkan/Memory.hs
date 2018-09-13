@@ -7,6 +7,7 @@ module Vulkan.Memory ( allocateMemoryFor ) where
 import Control.Monad ( (>=>), guard )
 import Control.Monad.IO.Class ( MonadIO, liftIO )
 import Data.Bits
+import Data.Foldable ( for_ )
 import qualified Foreign
 import qualified Foreign.Marshal
 
@@ -26,7 +27,7 @@ allocateMemoryFor
   => Vulkan.VkPhysicalDevice
   -> Vulkan.VkDevice
   -> Vulkan.VkMemoryRequirements
-  -> Vulkan.VkMemoryPropertyFlags
+  -> [ Vulkan.VkMemoryPropertyFlags ]
   -> m Vulkan.VkDeviceMemory
 allocateMemoryFor physicalDevice device requirements requiredFlags = do
   memoryProperties <-
@@ -47,7 +48,6 @@ allocateMemoryFor physicalDevice device requirements requiredFlags = do
       )
 
   let
-
     possibleMemoryTypeIndices = do
       ( i, memoryType ) <-
         zip [ 0 .. ] memoryTypes
@@ -58,9 +58,12 @@ allocateMemoryFor physicalDevice device requirements requiredFlags = do
             ( fromIntegral i )
         )
 
-      guard
-        ( Vulkan.getField @"propertyFlags" memoryType .&. requiredFlags > 0 )
-      
+      for_
+        requiredFlags
+        ( \f ->
+            guard ( Vulkan.getField @"propertyFlags" memoryType .&. f > 0 )
+        )
+
       return i
 
   memoryTypeIndex <-

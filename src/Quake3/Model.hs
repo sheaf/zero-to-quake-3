@@ -13,7 +13,7 @@ module Quake3.Model
 
 -- base
 import Control.Applicative ( liftA2 )
-import Data.Monoid ( Any(..), Sum(..) )
+import Data.Monoid ( Sum(..) )
 import qualified Foreign.C
 
 -- linear

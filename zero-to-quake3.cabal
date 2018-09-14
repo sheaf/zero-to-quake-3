@@ -28,6 +28,7 @@ executable zero-to-quake3
     Quake3.Context
     Quake3.Input
     Quake3.Model
+    Quake3.Patch
     Quake3.Render
     Quake3.Vertex
     Vulkan.Buffer
@@ -45,8 +46,10 @@ executable zero-to-quake3
     Vulkan.Memory
     Vulkan.PhysicalDevice
     Vulkan.Pipeline
+    Vulkan.Poke
     Vulkan.RenderPass
     Vulkan.Semaphore
+    Vulkan.VertexFormat
     Vulkan.WSI
   -- other-extensions:
   build-depends:       base >= 4.10
@@ -57,6 +60,7 @@ executable zero-to-quake3
                      , unliftio
                      , binary
                      , generic-deriving
+                     , contravariant
                      , typelits-witnesses >= 0.2.3
                      , ghc-typelits-knownnat >= 0.3.1
                      , ghc-typelits-natnormalise >= 0.5.7

@@ -28,6 +28,7 @@ createDevice
   -> Int
   -> m Vulkan.VkDevice
 createDevice physicalDevice queueFamilyIndex = do
+
   let
     queueCreateInfo =
       Vulkan.createVk
@@ -39,6 +40,10 @@ createDevice physicalDevice queueFamilyIndex = do
         &* Vulkan.set @"queueCount" 1
         &* Vulkan.setListRef @"pQueuePriorities" [ 1.0 :: Float ]
         )
+
+    features =
+      Vulkan.createVk
+        (  Vulkan.set @"tessellationShader" 1 )
 
     createInfo =
       Vulkan.createVk
@@ -53,7 +58,7 @@ createDevice physicalDevice queueFamilyIndex = do
         &* Vulkan.setListRef
              @"ppEnabledExtensionNames"
              [ Vulkan.VK_KHR_SWAPCHAIN_EXTENSION_NAME ]
-        &* Vulkan.set @"pEnabledFeatures" Foreign.nullPtr
+        &* Vulkan.setVkRef @"pEnabledFeatures" features
         )
 
   managedVulkanResource

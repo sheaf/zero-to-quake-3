@@ -5,7 +5,7 @@ module Quake3.BSP ( BSP(..), Face(..), MeshVertList(..), VertexList(..), loadBSP
 
 -- base
 import Control.Applicative ( liftA2, liftA3 )
-import Control.Monad ( guard, replicateM, unless )
+import Control.Monad ( guard, replicateM )
 import Control.Monad.IO.Class ( MonadIO, liftIO )
 import Data.Char ( ord )
 import Data.Foldable ( traverse_ )
@@ -16,7 +16,6 @@ import qualified Data.Binary.Get
 
 -- bytestring
 import qualified Data.ByteString.Lazy
-import qualified Data.ByteString.Lazy.Char8
 
 
 data DirEntry = DirEntry
@@ -27,9 +26,9 @@ data DirEntry = DirEntry
 
 
 data BSP = BSP
-  { bspVertices :: VertexList
+  { bspVertices  :: VertexList
   , bspMeshVerts :: MeshVertList
-  , bspFaces :: [ Face ]
+  , bspFaces     :: [ Face ]
   }
   deriving ( Show )
 

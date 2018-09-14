@@ -31,7 +31,6 @@ import Math.Linear
   , lookAt
   , perspective
   , V(..)
-  , M
   , pattern V2
   , pattern V3
   )

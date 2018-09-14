@@ -197,6 +197,7 @@ createWindow =
         "Vulkan Quake 3"
         SDL.defaultWindow
           { SDL.windowGraphicsContext = SDL.VulkanContext
+          , SDL.windowInitialSize = SDL.V2 1024 768
           }
     )
     SDL.destroyWindow

@@ -56,10 +56,11 @@ executable zero-to-quake3
                      , vulkan-api
                      , managed
                      , bytestring
-                     , unliftio
                      , binary
                      , generic-deriving
                      , contravariant
+                     , transformers
+                     , dunai
                      , typelits-witnesses >= 0.2.3
                      , ghc-typelits-knownnat >= 0.3.1
                      , ghc-typelits-natnormalise >= 0.5.7

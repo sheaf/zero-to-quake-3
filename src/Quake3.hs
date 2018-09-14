@@ -1,18 +1,22 @@
+{-# language Arrows          #-}
+{-# language PatternSynonyms #-}
 {-# language RecordWildCards #-}
+
 
 module Main ( main ) where
 
 -- base
+import Control.Arrow
 import Control.Monad.IO.Class ( MonadIO, liftIO )
+
+-- dunai
+import qualified Data.MonadicStreamFunction as D
 
 -- managed
 import Control.Monad.Managed ( runManaged )
 
--- unliftio
-import UnliftIO.IORef ( IORef, newIORef, readIORef, writeIORef )
-
--- sdl
-import qualified SDL
+-- transformers
+import Control.Monad.Trans.Except( ExceptT, runExceptT )
 
 -- vulkan-api
 import qualified Graphics.Vulkan.Core_1_0 as Vulkan
@@ -23,9 +27,9 @@ import qualified Graphics.Vulkan.Core_1_0 as Vulkan
 -- zero-to-quake-3
 import Foreign.Vulkan ( throwVkResult )
 import Quake3.Context ( Context(..), withQuake3Context )
-import qualified Quake3.Input
+import Quake3.Input ( actionSF )
 import qualified Quake3.Render
-import qualified Quake3.Model
+import Quake3.Model ( Quake3State, simulationSF )
 import Vulkan.CommandBuffer ( submitCommandBuffer )
 import Vulkan.WSI ( acquireNextImage , present )
 
@@ -42,68 +46,47 @@ main =
             ( Quake3.Render.renderToFrameBuffer context resources )
             framebuffers
 
-        kbmRef <-
-          newIORef Quake3.Input.defaultKBM
+        _ <- runExceptT 
+              ( D.reactimate 
+                  ( q3SF context resources commandBuffers )
+              )
 
-        stateRef <-
-          newIORef Quake3.Model.initial
-        
+        pure ()
 
-        untilM_
-          ( (/= mempty) . Quake3.Model.shouldQuit <$> readIORef stateRef )
-          ( frame context resources commandBuffers kbmRef stateRef )
+q3SF :: MonadIO m
+     => Context 
+     -> Quake3.Render.Resources
+     -> [ Vulkan.VkCommandBuffer ] 
+     -> D.MSF (ExceptT () m) () ()
+q3SF context resources commandBuffers
+   = actionSF
+   >>> safely ( simulationSF 
+                >>> renderSF context resources commandBuffers
+              )
+      where safely :: Monad n => D.MSF n a b -> D.MSF (ExceptT e n) a b
+            safely = D.liftMSFTrans
 
-untilM_ :: Monad m => m Bool -> m a -> m a
-untilM_ mb ma = do
-  b <- mb
-  if b
-  then ma
-  else ma >> untilM_ mb ma
+renderSF :: MonadIO m
+         => Context
+         -> Quake3.Render.Resources
+         -> [ Vulkan.VkCommandBuffer ]
+         -> D.MSF m Quake3State ()
+renderSF Context{..} resources commandBuffers
+  = proc q3State -> do
 
+      nextImageIndex <- D.arrM_ ( acquireNextImage device swapchain nextImageSem  ) -< ()
 
-frame
-  :: MonadIO m
-  => Context
-  -> Quake3.Render.Resources
-  -> [ Vulkan.VkCommandBuffer ]
-  -> IORef Quake3.Input.KBM
-  -> IORef Quake3.Model.Quake3State
-  -> m ()
-frame Context{..} resources commandBuffers kbmRef stateRef = do
-  events <-
-    fmap (map SDL.eventPayload) SDL.pollEvents
+      let commandBuffer =
+            commandBuffers !! nextImageIndex
+      
+      _ <- D.arrM ( Quake3.Render.updateUniformBufferFromModel resources ) -< q3State
 
-  kbm0 <- 
-    readIORef kbmRef
+      _ <- D.arrM ( \buff -> submitCommandBuffer queue buff nextImageSem submitted ) -< commandBuffer
 
-  s0 <-
-    readIORef stateRef
+      _ <- D.arrM ( \nextIm -> present queue swapchain nextIm submitted ) -< nextImageIndex
 
-  let
-    kbm1 = 
-      foldl Quake3.Input.onSDLInput kbm0 events
+      _ <- D.arrM_ ( liftIO ( Vulkan.vkQueueWaitIdle queue ) 
+                    >>= throwVkResult
+                 ) -< ()
 
-    s1 =
-      Quake3.Model.step s0 ( Quake3.Input.interpretKBM kbm1 )
-
-  writeIORef kbmRef (kbm1 { Quake3.Input.mouseRel = Quake3.Input.mouseRel Quake3.Input.defaultKBM })
-
-  writeIORef stateRef s1
-
-  nextImageIndex <-
-    acquireNextImage device swapchain nextImageSem
-
-  let
-    commandBuffer =
-      commandBuffers !! nextImageIndex
-
-  Quake3.Render.updateUniformBufferFromModel resources s1
-
-  submitCommandBuffer queue commandBuffer nextImageSem submitted
-
-  present queue swapchain nextImageIndex submitted
-
-  -- TODO Replace with fences
-  liftIO ( Vulkan.vkQueueWaitIdle queue )
-    >>= throwVkResult
-
+      returnA -< ()

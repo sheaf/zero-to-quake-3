@@ -24,11 +24,14 @@ extra-deps:
 - vulkan-api-1.1.3.0
 #
 - generic-deriving-1.12.2
-- unliftio-0.2.8.0
-- async-2.2.1
 - th-abstraction-0.2.8.0
-- unliftio-core-0.1.2.0
 - contravariant-1.5
+# FRP
+- dunai-0.4.0.0
+- MonadRandom-0.5.1.1
+- transformers-base-0.4.5.2
+- base-orphans-0.8
+- random-1.1
 # for type nats comparison
 - typelits-witnesses-0.3.0.2
 - base-compat-0.10.4

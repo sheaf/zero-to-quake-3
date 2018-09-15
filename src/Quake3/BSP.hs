@@ -97,7 +97,7 @@ getBSP = do
           MeshVertList ( lookupBytes meshVerts fileBytes )
       , bspFaces =
           let
-            n =
+            n = 
               deLength faces `div` ( 26 * 4 )
 
           in

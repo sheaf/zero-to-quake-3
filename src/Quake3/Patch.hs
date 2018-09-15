@@ -45,17 +45,18 @@ indices:
 
 -}
 
--- rows, cols denote the number of béziers per row/column,
--- not number of vertices per row/column
+-- rows, cols denote the number of vertices per row/column (not number of Bézier patches)
 patchIndices :: (Int32, Int32) -> Int32 -> ( Data.ByteString.Lazy.ByteString, Int32 )
-patchIndices (rows, cols) firstIndex
+patchIndices (cols, rows) firstIndex
   = ( Data.Binary.Put.runPut ( traverse_ Data.Binary.Put.putInt32le inds )
-    , (2*rows+1)*(2*cols+1)
+    , 9 * n * m
     )
-    where 
-      inds 
-        = [ firstIndex + (i + 2*c) + (2*cols + 1)*(j + 2*r)
-          | r <- [0..rows-1], c <- [0..cols-1], j <- [0..2], i <- [0..2]
+    where
+      m = (cols - 1) `div` 2
+      n = (rows - 1) `div` 2
+      inds
+        = [ firstIndex + (i + 2*c) + cols*(j + 2*r)
+          | r <- [0..n-1], c <- [0..m-1], j <- [0..2], i <- [0..2]
           ]
 
 indices :: [ Face ] -> ( MeshVertList, Int32 )

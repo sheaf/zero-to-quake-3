@@ -132,7 +132,7 @@ renderToFrameBuffer Context{..} Resources{..} framebuffer = do
     bindIndexBuffer commandBuffer indexBuffer
 
     withRenderPass commandBuffer renderPass framebuffer extent $ do
-      bindPipeline commandBuffer graphicsPipeline
+      bindPipeline commandBuffer pipeline
 
       bindDescriptorSets commandBuffer pipelineLayout [ descriptorSet ]
 

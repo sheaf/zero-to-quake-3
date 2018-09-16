@@ -9,10 +9,6 @@ module Vulkan.Pipeline
 -- base
 import Control.Monad.IO.Class ( MonadIO, liftIO )
 import Data.Bits
-import qualified Foreign
-
--- bytestring
-import qualified Data.ByteString
 
 -- managed
 import Control.Monad.Managed ( MonadManaged )
@@ -26,6 +22,7 @@ import qualified Graphics.Vulkan.Marshal.Create as Vulkan
 -- zero-to-quake-3
 import Foreign.Vulkan ( managedVulkanResource )
 import qualified Vulkan.VertexFormat as VertexFormat
+import Vulkan.Shader( ShaderInfo(..), ShaderType(..), createShaderStage )
 
 
 createPipeline
@@ -35,8 +32,9 @@ createPipeline
   -> Vulkan.VkExtent2D
   -> Vulkan.VkDescriptorSetLayout
   -> VertexFormat.VertexFormat v
+  -> [ ShaderInfo ]
   -> m ( Vulkan.VkPipeline, Vulkan.VkPipelineLayout )
-createPipeline device renderPass extent layout0 vertexFormat = do
+createPipeline device renderPass extent layout0 vertexFormat shaderInfos = do
   pipelineLayout <-
     let
       pipelineLayoutCreateInfo =
@@ -58,20 +56,25 @@ createPipeline device renderPass extent layout0 vertexFormat = do
       )
       ( Vulkan.vkDestroyPipelineLayout device )
 
-  -- TODO Remove hard coding
-  vertexShader <-
-    loadShader device "shaders//vert.spv"
-
-  tessControlShader <-
-    loadShader device "shaders//tesc.spv"
-
-  tessEvalShader <-
-    loadShader device "shaders//tese.spv"
-
-  fragmentShader <-
-    loadShader device "shaders//frag.spv"
+  shaderStages <- 
+      traverse (createShaderStage device)
+               shaderInfos
 
   let
+
+    needsTessellation = any ( (==TessellationEvaluation) . shaderType ) shaderInfos
+    topology = if needsTessellation
+               then Vulkan.VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+               else Vulkan.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
+
+    tessellationStateCreateInfo = 
+      Vulkan.createVk
+        (  Vulkan.set @"sType" Vulkan.VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO
+        &* Vulkan.set @"pNext" Vulkan.VK_NULL
+        &* Vulkan.set @"flags" 0
+        &* Vulkan.set @"patchControlPoints" 9
+        )
+
     rasterizationCreateInfo =
       Vulkan.createVk
         (  Vulkan.set @"sType" Vulkan.VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO
@@ -87,48 +90,6 @@ createPipeline device renderPass extent layout0 vertexFormat = do
         &* Vulkan.set @"frontFace" Vulkan.VK_FRONT_FACE_CLOCKWISE
         &* Vulkan.set @"cullMode" Vulkan.VK_CULL_MODE_BACK_BIT
         )
-
-    vertexShaderStage =
-      Vulkan.createVk
-        (  Vulkan.set @"sType" Vulkan.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO
-        &* Vulkan.set @"pNext" Vulkan.VK_NULL
-        &* Vulkan.set @"flags" 0
-        &* Vulkan.setStrRef @"pName" "main"
-        &* Vulkan.set @"module" vertexShader
-        &* Vulkan.set @"stage" Vulkan.VK_SHADER_STAGE_VERTEX_BIT
-        )
-
-    tessControlShaderStage =
-      Vulkan.createVk
-        (  Vulkan.set @"sType" Vulkan.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO
-        &* Vulkan.set @"pNext" Vulkan.VK_NULL
-        &* Vulkan.set @"flags" 0
-        &* Vulkan.setStrRef @"pName" "main"
-        &* Vulkan.set @"module" tessControlShader
-        &* Vulkan.set @"stage" Vulkan.VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT
-        )
-
-    tessEvalShaderStage =
-      Vulkan.createVk
-        (  Vulkan.set @"sType" Vulkan.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO
-        &* Vulkan.set @"pNext" Vulkan.VK_NULL
-        &* Vulkan.set @"flags" 0
-        &* Vulkan.setStrRef @"pName" "main"
-        &* Vulkan.set @"module" tessEvalShader
-        &* Vulkan.set @"stage" Vulkan.VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT
-        )
-
-    fragmentShaderStage =
-      Vulkan.createVk
-        (  Vulkan.set @"sType" Vulkan.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO
-        &* Vulkan.set @"pNext" Vulkan.VK_NULL
-        &* Vulkan.set @"flags" 0
-        &* Vulkan.setStrRef @"pName" "main"
-        &* Vulkan.set @"module" fragmentShader
-        &* Vulkan.set @"stage" Vulkan.VK_SHADER_STAGE_FRAGMENT_BIT
-        )
-
-    shaderStages = [ vertexShaderStage, tessControlShaderStage, tessEvalShaderStage, fragmentShaderStage ]
 
     vertexBindingDescription =
       Vulkan.createVk
@@ -154,7 +115,7 @@ createPipeline device renderPass extent layout0 vertexFormat = do
       Vulkan.createVk
         (  Vulkan.set @"sType" Vulkan.VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO
         &* Vulkan.set @"pNext" Vulkan.VK_NULL
-        &* Vulkan.set @"topology" Vulkan.VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+        &* Vulkan.set @"topology" topology
         &* Vulkan.set @"primitiveRestartEnable" Vulkan.VK_FALSE
         )
 
@@ -258,34 +219,48 @@ createPipeline device renderPass extent layout0 vertexFormat = do
         &* Vulkan.set @"back" nullStencilOp
         )
 
-    tessellationStateCreateInfo =
-      Vulkan.createVk
-        (  Vulkan.set @"sType" Vulkan.VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO
-        &* Vulkan.set @"pNext" Vulkan.VK_NULL
-        &* Vulkan.set @"flags" 0
-        &* Vulkan.set @"patchControlPoints" 9
-        )
-
     createInfo =
-      Vulkan.createVk
-        (  Vulkan.set @"sType" Vulkan.VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO
-        &* Vulkan.set @"pNext" Vulkan.VK_NULL
-        &* Vulkan.set @"flags" 0
-        &* Vulkan.set @"stageCount" ( fromIntegral (length shaderStages) )
-        &* Vulkan.setListRef @"pStages" shaderStages
-        &* Vulkan.setVkRef @"pVertexInputState" vertexInputState
-        &* Vulkan.setVkRef @"pInputAssemblyState" assemblyStateCreateInfo
-        &* Vulkan.setVkRef @"pTessellationState" tessellationStateCreateInfo
-        &* Vulkan.set @"basePipelineIndex" 0
-        &* Vulkan.set @"subpass" 0
-        &* Vulkan.set @"renderPass" renderPass
-        &* Vulkan.set @"layout" pipelineLayout
-        &* Vulkan.setVkRef @"pRasterizationState" rasterizationCreateInfo
-        &* Vulkan.setVkRef @"pViewportState" viewportState
-        &* Vulkan.setVkRef @"pMultisampleState" multisampleState
-        &* Vulkan.setVkRef @"pColorBlendState" colorBlendState
-        &* Vulkan.setVkRef @"pDepthStencilState" depthStencilState
-        )
+      if needsTessellation
+      then 
+        Vulkan.createVk
+          (  Vulkan.set @"sType" Vulkan.VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO
+          &* Vulkan.set @"pNext" Vulkan.VK_NULL
+          &* Vulkan.set @"flags" 0
+          &* Vulkan.set @"stageCount" ( fromIntegral ( length shaderStages ) )
+          &* Vulkan.setListRef @"pStages" shaderStages
+          &* Vulkan.setVkRef @"pVertexInputState" vertexInputState
+          &* Vulkan.setVkRef @"pInputAssemblyState" assemblyStateCreateInfo
+          &* Vulkan.setVkRef @"pTessellationState" tessellationStateCreateInfo
+          &* Vulkan.set @"basePipelineIndex" 0
+          &* Vulkan.set @"subpass" 0
+          &* Vulkan.set @"renderPass" renderPass
+          &* Vulkan.set @"layout" pipelineLayout
+          &* Vulkan.setVkRef @"pRasterizationState" rasterizationCreateInfo
+          &* Vulkan.setVkRef @"pViewportState" viewportState
+          &* Vulkan.setVkRef @"pMultisampleState" multisampleState
+          &* Vulkan.setVkRef @"pColorBlendState" colorBlendState
+          &* Vulkan.setVkRef @"pDepthStencilState" depthStencilState
+          )
+      else
+        Vulkan.createVk
+          (  Vulkan.set @"sType" Vulkan.VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO
+          &* Vulkan.set @"pNext" Vulkan.VK_NULL
+          &* Vulkan.set @"flags" 0
+          &* Vulkan.set @"stageCount" ( fromIntegral ( length shaderStages ) )
+          &* Vulkan.setListRef @"pStages" shaderStages
+          &* Vulkan.setVkRef @"pVertexInputState" vertexInputState
+          &* Vulkan.setVkRef @"pInputAssemblyState" assemblyStateCreateInfo
+          &* Vulkan.set @"basePipelineIndex" 0
+          &* Vulkan.set @"subpass" 0
+          &* Vulkan.set @"renderPass" renderPass
+          &* Vulkan.set @"layout" pipelineLayout
+          &* Vulkan.setVkRef @"pRasterizationState" rasterizationCreateInfo
+          &* Vulkan.setVkRef @"pViewportState" viewportState
+          &* Vulkan.setVkRef @"pMultisampleState" multisampleState
+          &* Vulkan.setVkRef @"pColorBlendState" colorBlendState
+          &* Vulkan.setVkRef @"pDepthStencilState" depthStencilState
+          )
+
 
   pipeline <-
     managedVulkanResource
@@ -298,32 +273,6 @@ createPipeline device renderPass extent layout0 vertexFormat = do
       ( Vulkan.vkDestroyPipeline device )
 
   return ( pipeline, pipelineLayout )
-
-
--- TODO This module shouldn't be responsible for loading shaders!
-
-loadShader :: MonadManaged m => Vulkan.VkDevice -> FilePath -> m Vulkan.VkShaderModule
-loadShader device srcFile = do
-  bytes <-
-    liftIO ( Data.ByteString.readFile srcFile )
-
-  managedVulkanResource
-    ( \a b ->
-        Data.ByteString.useAsCStringLen bytes $ \( bytesPtr, len ) ->
-          let
-            createInfo =
-              Vulkan.createVk
-                (  Vulkan.set @"sType" Vulkan.VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO
-                &* Vulkan.set @"pNext" Vulkan.VK_NULL
-                &* Vulkan.set @"flags" 0
-                &* Vulkan.set @"pCode" ( Foreign.castPtr bytesPtr )
-                &* Vulkan.set @"codeSize" ( fromIntegral len )
-                )
-
-          in
-          Vulkan.vkCreateShaderModule device ( Vulkan.unsafePtr createInfo ) a b
-    )
-    ( Vulkan.vkDestroyShaderModule device )
 
 
 bindPipeline :: MonadIO m => Vulkan.VkCommandBuffer -> Vulkan.VkPipeline -> m ()

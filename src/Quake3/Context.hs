@@ -25,6 +25,7 @@ import qualified Graphics.Vulkan.Core_1_0 as Vulkan
 -- zero-to-quake-3
 import Control.Monad.Managed.Extra ( manageBracket )
 import qualified Quake3.Vertex
+import Vulkan.Shader( ShaderInfo(..), ShaderType(..) )
 import Vulkan.CommandPool ( createCommandPool )
 import Vulkan.DescriptorSet
   ( allocateDescriptorSet
@@ -50,18 +51,18 @@ import Vulkan.WSI
 
 data Context = Context
   { physicalDevice :: Vulkan.VkPhysicalDevice
-  , device :: Vulkan.VkDevice
-  , descriptorSet :: Vulkan.VkDescriptorSet
-  , framebuffers :: [ Vulkan.VkFramebuffer ]
-  , commandPool :: Vulkan.VkCommandPool
-  , renderPass :: Vulkan.VkRenderPass
-  , extent :: Vulkan.VkExtent2D
-  , graphicsPipeline :: Vulkan.VkPipeline
+  , device         :: Vulkan.VkDevice
+  , descriptorSet  :: Vulkan.VkDescriptorSet
+  , framebuffers   :: [ Vulkan.VkFramebuffer ]
+  , commandPool    :: Vulkan.VkCommandPool
+  , renderPass     :: Vulkan.VkRenderPass
+  , extent         :: Vulkan.VkExtent2D
+  , pipeline       :: Vulkan.VkPipeline
   , pipelineLayout :: Vulkan.VkPipelineLayout
-  , swapchain :: Vulkan.VkSwapchainKHR
-  , nextImageSem :: Vulkan.VkSemaphore
-  , queue :: Vulkan.VkQueue
-  , submitted :: Vulkan.VkSemaphore
+  , swapchain      :: Vulkan.VkSwapchainKHR
+  , nextImageSem   :: Vulkan.VkSemaphore
+  , queue          :: Vulkan.VkQueue
+  , submitted      :: Vulkan.VkSemaphore
   }
 
 
@@ -163,13 +164,31 @@ withQuake3Context action = do
   descriptorSet <-
     allocateDescriptorSet device descriptorPool descriptorSetLayout
 
-  ( graphicsPipeline, pipelineLayout ) <-
+  ( pipeline, pipelineLayout ) <-
     createPipeline
       device
       renderPass
       extent
       descriptorSetLayout
-      Quake3.Vertex.vertexFormat
+      Quake3.Vertex.vertexFormat    
+      [ ShaderInfo { shaderPath = "shaders//vert.spv"
+                   , shaderType = Vertex
+                   , entryPoint = "main"
+                   }
+      , ShaderInfo { shaderPath = "shaders//tesc.spv"
+                   , shaderType = TessellationControl
+                   , entryPoint = "main"
+                   }
+      , ShaderInfo { shaderPath = "shaders//tese.spv"
+                   , shaderType = TessellationEvaluation
+                   , entryPoint = "main"
+                   }
+      , ShaderInfo { shaderPath = "shaders//frag.spv"
+                   , shaderType = Fragment
+                   , entryPoint = "main"
+                   }
+      ]
+    
 
   action Context {..}
 

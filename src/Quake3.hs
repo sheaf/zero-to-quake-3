@@ -68,12 +68,14 @@ main = do
         commandBuffers <-
           traverse
             ( Quake3.Render.renderToFrameBuffer context resources )
-            framebuffers        
+            framebuffers
 
         liftIO $ concurrently_
-          (    runExceptT ( D.reactimate ( renderSFReader context resources commandBuffers q3StateTVar ) )
+          (    ( runExceptT . D.reactimate )
+                 ( renderSFReader refTime context resources commandBuffers q3StateTVar )
           )
-          (    runExceptT ( D.reactimate ( gameSFWriter refTime q3StateTVar ) )
+          (    (runExceptT . D.reactimate )
+                  ( gameSFWriter refTime q3StateTVar )
             >> STM.atomically ( STM.writeTVar q3StateTVar Nothing )
           )
   
@@ -82,14 +84,19 @@ main = do
 
 
 renderSFReader :: MonadIO m 
-             => Context
+             => Double
+             -> Context
              -> Quake3.Render.Resources
              -> [ Vulkan.VkCommandBuffer ]
              -> STM.TVar (Maybe Quake3State)
              -> D.MSF (ExceptT () m) () ()
-renderSFReader context resources commandBuffers tvar
-  = readerSF tvar
-    >>> untilNothing ( renderSF context resources commandBuffers ) 
+renderSFReader refTime context resources commandBuffers tvar = proc () -> do
+  dt <- D.liftMSFTrans (dtime refTime) -< ()
+  D.runReaderS sf -< (dt, ())
+  where sf = ( readerSF tvar
+               >>> untilNothing ( renderSF context resources commandBuffers ) 
+             ) `every` 0.001 
+               >>> hold () -- cap framerate at 1000
 
 renderSF :: MonadIO m
          => Context
@@ -115,19 +122,16 @@ gameSFWriter :: MonadIO m
            => Double
            -> STM.TVar (Maybe Quake3State)
            -> D.MSF (ExceptT () m) () ()
-gameSFWriter refTime tvar
-  = gameSF refTime 
-    >>> D.arr Just 
-    >>> writerSF tvar
-
-gameSF :: MonadIO m 
-       => Double 
-       -> D.MSF (ExceptT () m) () Quake3State
-gameSF refTime = proc () -> do
+gameSFWriter refTime tvar = proc () -> do
   dt <- D.liftMSFTrans (dtime refTime) -< ()
   D.runReaderS sf -< (dt, ())
-    where sf = ( actionSF >>> D.liftMSFTrans simulationSF ) `every` fromRational simulationTickTime
-               >>> hold ( initial :: Quake3State )
+    where sf =
+            (    actionSF 
+              >>> D.liftMSFTrans simulationSF 
+              >>> D.arr Just 
+              >>> writerSF tvar
+            ) `every` fromRational simulationTickTime
+              >>> hold ()
 
 untilNothing :: Monad m => D.MSF m a b -> D.MSF (ExceptT () m) (Maybe a) b
 untilNothing sf = D.maybeToExceptS ( D.inMaybeT >>> D.liftMSFTrans sf )

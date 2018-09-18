@@ -86,8 +86,8 @@ onSDLInput input (SDL.KeyboardEvent ev)
          SDL.Pressed  -> input { keys = keyCode : filter (/= keyCode) (keys input) }
          SDL.Released -> input { keys =           filter (/= keyCode) (keys input) }
 onSDLInput input (SDL.MouseMotionEvent ev) 
-  = input { mousePos = fmap ((/1000) . fromIntegral) (V2 px py)
-          , mouseRel = fmap ((/1000) . fromIntegral) (V2 rx ry)
+  = input { mousePos = fmap ((/300) . fromIntegral) (V2 px py)
+          , mouseRel = fmap ((/300) . fromIntegral) (V2 rx ry)
           }
     where 
       SDL.P (SDL.V2 px py) = SDL.mouseMotionEventPos       ev
@@ -102,8 +102,8 @@ inputSF = D.arrM_ ( map SDL.eventPayload <$> SDL.pollEvents )
               >>> D.feedback defaultInput updWithZeroing
   where updWithZeroing :: Monad n 
                    => D.MSF n 
-                        ( [SDL.EventPayload], Input ) 
-                        ( Input             , Input ) 
+                        ( [SDL.EventPayload], Input )
+                        ( Input             , Input )
         updWithZeroing = proc ( payloads, input ) -> do
           zeroedInput <- arr ( \input -> input { mouseRel = V2 0 0 } ) 
                       -< input

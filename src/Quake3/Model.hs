@@ -7,6 +7,7 @@ module Quake3.Model
   ( Action(..)
   , Quake3State(..)
   , simulationSF
+  , initial
   ) where
 
 -- base
@@ -22,6 +23,7 @@ import qualified Data.MonadicStreamFunction as D
 import Math.Linear ( V(..), (^+^), pattern V2, pattern V3 )
 import qualified Math.Quaternion as Quaternion
 import Quake3.Input ( Action(..) )
+import Quake3.Constants ( simulationTickTime )
 
 
 data Quake3State = Quake3State
@@ -29,16 +31,24 @@ data Quake3State = Quake3State
   , cameraAngles   :: V 2 Foreign.C.CFloat
   }
 
+scaleMovement :: V 2 Foreign.C.CFloat -> V 3 Foreign.C.CFloat
+scaleMovement ( V2 x y )
+  = fmap 
+      ( * ( 500 * fromRational simulationTickTime ) )
+      ( V3 x 0 (-y) )
+
 step :: Action -> Quake3State -> Quake3State
 step Action {..}
      Quake3State { .. } =
   let
-    newAngles@(V2 x y) = cameraAngles ^+^ liftA2 (*) ( fmap getSum rotate ) ( V2 (-1) 1 )
+    newAngles@(V2 x y) = cameraAngles ^+^ liftA2 (*) ( fmap getSum look ) ( V2 (-1) 1 )
     orientation = Quaternion.axisAngle (V3 0 1 0) x * Quaternion.axisAngle (V3 1 0 0) y
   in
   Quake3State
     { cameraPosition =
-        cameraPosition ^+^ Quaternion.rotate orientation ( fmap getSum impulse )
+        cameraPosition ^+^ Quaternion.rotate 
+                              orientation 
+                              ( scaleMovement ( fmap getSum movement ) )
     , cameraAngles = newAngles
     }
 

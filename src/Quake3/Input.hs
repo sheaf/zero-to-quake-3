@@ -28,11 +28,10 @@ import Generics.Deriving.Monoid ( memptydefault, mappenddefault )
 import Control.Monad.Trans.Except( ExceptT )
 
 -- zero-to-quake-3
-import Math.Linear( V(..), pattern V2, pattern V3 )
+import Math.Linear( V(..), pattern V2 )
 
 -- sdl2
 import qualified SDL
-import qualified SDL.Event
 
 newtype Quit = Quit Any
   deriving (Eq, Show, Semigroup, Monoid)
@@ -51,8 +50,8 @@ defaultInput :: Input
 defaultInput = Input [] (V2 0 0) (V2 0 0) mempty
 
 data Action = Action
-  { impulse    :: V 3 ( Sum Foreign.C.CFloat )
-  , rotate     :: V 2 ( Sum Foreign.C.CFloat )
+  { movement   :: V 2 ( Sum Foreign.C.CFloat )
+  , look       :: V 2 ( Sum Foreign.C.CFloat )
   , quitAction :: Quit
   } deriving(Generic)
 
@@ -69,14 +68,14 @@ shouldQuit action = quitAction action == quit
 -- Processing of directional information
 
 
-strafeDir :: SDL.Scancode -> V 3 Foreign.C.CFloat
-strafeDir SDL.ScancodeW = V3   0   0 (-5)
-strafeDir SDL.ScancodeS = V3   0   0   5
-strafeDir SDL.ScancodeA = V3 (-5)  0   0
-strafeDir SDL.ScancodeD = V3   5   0   0
-strafeDir _             = V3   0   0   0
+strafeDir :: SDL.Scancode -> V 2 Foreign.C.CFloat
+strafeDir SDL.ScancodeW = V2   0    1
+strafeDir SDL.ScancodeS = V2   0  (-1)
+strafeDir SDL.ScancodeA = V2 (-1)   0
+strafeDir SDL.ScancodeD = V2   1    0
+strafeDir _             = V2   0    0
 
-strafe :: [SDL.Scancode] -> V 3 (Sum Foreign.C.CFloat)
+strafe :: [SDL.Scancode] -> V 2 (Sum Foreign.C.CFloat)
 strafe = foldMap (fmap Sum . strafeDir)
 
 onSDLInput :: Input -> SDL.EventPayload -> Input
@@ -87,8 +86,8 @@ onSDLInput input (SDL.KeyboardEvent ev)
          SDL.Pressed  -> input { keys = keyCode : filter (/= keyCode) (keys input) }
          SDL.Released -> input { keys =           filter (/= keyCode) (keys input) }
 onSDLInput input (SDL.MouseMotionEvent ev) 
-  = input { mousePos = fmap ((/100) . fromIntegral) (V2 px py)
-          , mouseRel = fmap ((/100) . fromIntegral) (V2 rx ry)
+  = input { mousePos = fmap ((/1000) . fromIntegral) (V2 px py)
+          , mouseRel = fmap ((/1000) . fromIntegral) (V2 rx ry)
           }
     where 
       SDL.P (SDL.V2 px py) = SDL.mouseMotionEventPos       ev
@@ -115,12 +114,12 @@ inputSF = D.arrM_ ( map SDL.eventPayload <$> SDL.pollEvents )
 
 interpretInput :: Input -> Action
 interpretInput Input{..} =
-  let impulse    = strafe keys
+  let movement   = strafe keys
       escape     = foldMap
                       ( \case { SDL.ScancodeEscape -> quit; _ -> mempty } )
                       keys
       quitAction = quitEvent <> escape
-      rotate     = fmap Sum mouseRel
+      look       = fmap Sum mouseRel
   in Action{..}
 
 interpretSF :: Monad m => D.MSF (ExceptT () m) Input Action

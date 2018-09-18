@@ -76,7 +76,7 @@ createDescriptorPool device =
       Vulkan.createVk
         (  Vulkan.set @"sType" Vulkan.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO
         &* Vulkan.set @"pNext" Vulkan.VK_NULL
-        &* Vulkan.set @"flags" 0
+        &* Vulkan.set @"flags" Vulkan.VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT
         &* Vulkan.set @"poolSizeCount" 1
         &* Vulkan.setListRef @"pPoolSizes" [ poolSize0 ]
         &* Vulkan.set @"maxSets" 1

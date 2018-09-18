@@ -18,6 +18,7 @@ cabal-version:       >=1.10
 executable zero-to-quake3
   main-is:             Quake3.hs
   other-modules:
+    Control.Concurrent.MonadicStreamFunction
     Control.Monad.Managed.Extra
     Foreign.Marshal.Extra
     Foreign.Vulkan
@@ -61,6 +62,8 @@ executable zero-to-quake3
                      , contravariant
                      , transformers
                      , dunai
+                     , async
+                     , stm
                      , typelits-witnesses >= 0.2.3
                      , ghc-typelits-knownnat >= 0.3.1
                      , ghc-typelits-natnormalise >= 0.5.7

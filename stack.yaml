@@ -32,6 +32,8 @@ extra-deps:
 - transformers-base-0.4.5.2
 - base-orphans-0.8
 - random-1.1
+# concurrency
+- async-2.2.1
 # for type nats comparison
 - typelits-witnesses-0.3.0.2
 - base-compat-0.10.4

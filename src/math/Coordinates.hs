@@ -19,7 +19,7 @@ import qualified Foreign
 import qualified Foreign.C
 
 -- zero-to-quake-3
-import Math.Linear(V(..), M, repeatV, zipWithV, transpose, (<++>), (^+^), (^-^), (!*!), inverse, pattern V1, pattern V3)
+import Math.Linear(V(..), M, repeatV, zipWithV, transpose, (<++>), (^-^), (!*!), inverse, pattern V1, pattern V3)
 
 
 

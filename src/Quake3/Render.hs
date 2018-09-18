@@ -3,8 +3,6 @@
 {-# language PatternSynonyms    #-}
 {-# language RankNTypes         #-}
 {-# language RecordWildCards    #-}
-{-# language StandaloneDeriving #-}
-{-# language TypeApplications   #-}
 
 module Quake3.Render
   ( Resources

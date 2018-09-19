@@ -26,6 +26,12 @@ extra-deps:
 - generic-deriving-1.12.2
 - th-abstraction-0.2.8.0
 - contravariant-1.5
+# megaparsec
+- megaparsec-7.0.0
+- case-insensitive-1.2.0.11
+- parser-combinators-1.0.0
+- scientific-0.3.6.2
+- integer-logarithms-1.0.2.2
 # FRP
 - dunai-0.4.0.0
 - MonadRandom-0.5.1.1

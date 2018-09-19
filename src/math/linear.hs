@@ -278,7 +278,10 @@ m1 !*! m2 = fmap (\row -> fmap (sum . zipWithV (*) row) (transpose m2)) m1
 (!*^) :: (KnownNat n, KnownNat m, Num a) => M n m a -> V m a -> V n a
 m !*^ v = fmap (\row -> sum $ zipWithV (*) row v) m
 
-
+applyM44 :: Num a => M 4 4 a -> V 3 a -> V 3 a
+applyM44 mat (V3 x y z) =
+  let V4 x' y' z' _ = mat !*^ (V4 x y z 0)
+  in V3 x' y' z'
 
 inverse :: (KnownNat n, Num a, Fractional a, n ~ 3) => M n n a -> M n n a
 inverse ( V3 (V3 a b c)

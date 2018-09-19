@@ -11,6 +11,8 @@ import Control.Concurrent.Async ( concurrently_ )
 import Control.Arrow
 import Control.Concurrent ( setNumCapabilities )
 import Control.Monad.IO.Class ( MonadIO, liftIO )
+import Data.Foldable ( traverse_ )
+import Data.Maybe ( mapMaybe )
 
 -- dunai
 import qualified Data.MonadicStreamFunction as D
@@ -41,6 +43,8 @@ import Foreign.Vulkan ( throwVkResult )
 import Quake3.Constants ( simulationTickTime )
 import Quake3.Context ( Context(..), withQuake3Context )
 import Quake3.Input ( actionSF )
+import qualified Quake3.BSP
+import qualified Quake3.Entity
 import qualified Quake3.Render
 import Quake3.Model ( Quake3State, simulationSF, initial )
 import Vulkan.CommandBuffer ( submitCommandBuffer )
@@ -55,9 +59,6 @@ main = do
   refTime <- SDL.time
   setNumCapabilities 2 -- needs --threaded command line option
 
-  let initialQ3State = Just Quake3.Model.initial
-  q3StateTVar <- STM.newTVarIO initialQ3State
-
   runManaged
     $ withQuake3Context
     $ \context@Context{..} -> do
@@ -70,12 +71,23 @@ main = do
             ( Quake3.Render.renderToFrameBuffer context resources )
             framebuffers
 
+        let 
+          initialEntities =
+            mapMaybe
+              Quake3.Entity.parseEntity
+              ( Quake3.BSP.bspEntities ( Quake3.Render.bsp resources ) )
+          initialQ3State = Quake3.Model.initial initialEntities
+
+        q3StateTVar <- liftIO ( STM.newTVarIO ( Just initialQ3State ) )
+
+
+
         liftIO $ concurrently_
           (    ( runExceptT . D.reactimate )
                  ( renderSFReader refTime context resources commandBuffers q3StateTVar )
           )
           (    (runExceptT . D.reactimate )
-                  ( gameSFWriter refTime q3StateTVar )
+                  ( gameSFWriter refTime initialQ3State q3StateTVar )
             >> STM.atomically ( STM.writeTVar q3StateTVar Nothing )
           )
   
@@ -120,14 +132,15 @@ renderSF Context{..} resources commandBuffers
 
 gameSFWriter :: MonadIO m
            => Double
+           -> Quake3State
            -> STM.TVar (Maybe Quake3State)
            -> D.MSF (ExceptT () m) () ()
-gameSFWriter refTime tvar = proc () -> do
+gameSFWriter refTime initialQ3State tvar = proc () -> do
   dt <- D.liftMSFTrans (dtime refTime) -< ()
   D.runReaderS sf -< (dt, ())
     where sf =
             (    actionSF 
-              >>> D.liftMSFTrans simulationSF 
+              >>> D.liftMSFTrans ( simulationSF initialQ3State )
               >>> D.arr Just 
               >>> writerSF tvar
             ) `every` fromRational simulationTickTime

@@ -1,5 +1,6 @@
 {-# language DataKinds                  #-}
 {-# language GADTs                      #-}
+{-# language LambdaCase                 #-}
 {-# language PatternSynonyms            #-}
 {-# language RecordWildCards            #-}
 
@@ -13,17 +14,25 @@ module Quake3.Model
 -- base
 import Control.Applicative ( liftA2 )
 import Control.Arrow
+import Data.List ( sortOn )
+import Data.Maybe ( mapMaybe )
 import Data.Monoid ( Sum(..) )
+import Data.Ord ( Down(..) )
 import qualified Foreign.C
 
 -- dunai
 import qualified Data.MonadicStreamFunction as D
 
 -- zero-to-quake-3
-import Math.Linear ( V(..), (^+^), pattern V2, pattern V3 )
+import Math.Linear ( V(..), (^+^), applyM44, pattern V2, pattern V3 )
 import qualified Math.Quaternion as Quaternion
 import Quake3.Input ( Action(..) )
 import Quake3.Constants ( simulationTickTime )
+
+-- zero-to-quake3
+import Math.Coordinates ( q3ToVk )
+import qualified Quake3.Entity
+import qualified Quake3.Entity.InfoPlayerDeathmatch as InfoPlayerDeathmatch
 
 
 data Quake3State = Quake3State
@@ -53,16 +62,46 @@ step Action {..}
     }
 
 
-initial :: Quake3State
-initial =
-  Quake3State (V3 0 0 0) (V2 0 0)
+initial :: [Quake3.Entity.Entity] -> Quake3State
+initial initialEntities =
+  let
+    spawnPoints =
+      sortOn
+        ( Down . ( Just 1 == ) . InfoPlayerDeathmatch.spawnFlags )
+        ( mapMaybe
+            ( \case { Quake3.Entity.InfoPlayerDeathmatch info -> Just info; _ -> Nothing } )
+            initialEntities
+        )
+    initialSpawnPoint =
+      case spawnPoints of
+        [] ->
+          InfoPlayerDeathmatch.InfoPlayerDeathmatch
+            { origin     = V3 0 0 0
+            , angle      = 0
+            , spawnFlags = Nothing
+            }
+
+        ( a : _ ) ->
+          a
+    initialPosition = applyM44 q3ToVk ( fromIntegral <$> InfoPlayerDeathmatch.origin initialSpawnPoint )
+    initialAngle    = V2 
+                        ( pi - degToRad -- TODO: remove this hacky adjustment
+                          ( fromIntegral ( InfoPlayerDeathmatch.angle initialSpawnPoint ) )
+                        )
+                        0
+  in Quake3State initialPosition initialAngle
+
+
+degToRad :: Floating a => a -> a
+degToRad x =
+  x * ( pi / 180 )
 
 -----------------------------------------
 -- signal function
 
-simulationSF :: Monad m => D.MSF m Action Quake3State
-simulationSF = D.feedback initial sim
-  where sim :: Monad n 
+simulationSF :: Monad m => Quake3State -> D.MSF m Action Quake3State
+simulationSF initialQ3State = D.feedback initialQ3State sim
+  where sim :: Monad n
             => D.MSF n ( Action     , Quake3State ) 
                        ( Quake3State, Quake3State ) 
         sim = arr (uncurry step) >>^ ( \ s -> (s,s) )

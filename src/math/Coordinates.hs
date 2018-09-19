@@ -19,7 +19,7 @@ import qualified Foreign
 import qualified Foreign.C
 
 -- zero-to-quake-3
-import Math.Linear(V(..), M, repeatV, zipWithV, transpose, (<++>), (^-^), (!*!), inverse, pattern V1, pattern V3)
+import Math.Linear(V(..), M, repeatV, zipWithV, repeatV, identity, transpose, (<++>), (^-^), (!*!), inverse, pattern V1, pattern V3)
 
 
 
@@ -28,6 +28,9 @@ data AffineCoords n a = Coords
   { origin         :: V n a
   , basis          :: V n (V n a) -- positive x, positive y, positive z, ...
   }
+
+stdCoords :: (KnownNat n, Num a) => AffineCoords n a
+stdCoords = Coords (repeatV 0) identity
 
 deriving instance (Eq   a, KnownNat n) => Eq   (AffineCoords n a)
 deriving instance (Show a, KnownNat n) => Show (AffineCoords n a)
@@ -93,3 +96,5 @@ vkCoords = Coords
 q3ToVk :: M 4 4 Foreign.C.CFloat
 q3ToVk = convert q3Coords vkCoords
 
+q3ToStd :: M 4 4 Foreign.C.CFloat
+q3ToStd = convert q3Coords stdCoords
